@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Produkt-Suche (CSV + EAN-Scan)</title>
+
+  <!-- CSV Parser (PapaParse) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- Barcode Scanner (ZXing Browser UMD) -->
+  <script src="https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js"></script>
+
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; padding: 16px; background: #f6f7f8; color: #111; }
+    .card { max-width: 760px; margin: 0 auto; background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    input[type="file"], input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: #fff; }
+    button { padding: 12px 14px; border: 0; border-radius: 10px; background: #111; color: #fff; cursor: pointer; }
+    button.secondary { background: #444; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .hint { font-size: 12px; color: #666; margin-top: 6px; }
+    .result { margin-top: 14px; padding: 14px; border-radius: 12px; border: 1px solid #e6e6e6; background: #fafafa; }
+    .status { font-size: 34px; line-height: 1; margin-bottom: 10px; }
+    .ok { border-color: #bfe8c9; background: #f0fbf3; }
+    .bad { border-color: #f0b8b8; background: #fff1f1; }
+    .kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 10px; font-size: 14px; }
+    .kv div { padding: 2px 0; }
+    .label { color: #555; }
+    .videoWrap { margin-top: 12px; display: none; }
+    video { width: 100%; border-radius: 12px; background: #000; }
+    .small { font-size: 12px; color: #666; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>Produkt-Suche (CSV + EAN Scan)</h1>
+
+    <div class="row">
+      <div style="flex: 1 1 320px;">
+        <input id="csvFile" type="file" accept=".csv,text/csv" />
+        <div class="hint">CSV muss Spalten haben: <span class="mono">Artikel</span>, <span class="mono">VK-Preis</span>, <span class="mono">EAN</span></div>
+      </div>
+    </div>
+
+    <div style="height: 10px;"></div>
+
+    <div class="row">
+      <div style="flex: 1 1 320px;">
+        <input id="searchInput" type="text" placeholder="Suchen nach Produktname oder EAN …" disabled />
+        <div class="hint">Tipp: Du kannst auch nur einen Teil tippen (z. B. „milch“ oder „400123“).</div>
+      </div>
+
+      <button id="btnScan" disabled>📷 EAN scannen</button>
+      <button id="btnStop" class="secondary" disabled>⏹ Stop</button>
+    </div>
+
+    <div class="videoWrap" id="videoWrap">
+      <div class="hint">Kamera läuft – halte den Barcode ruhig ins Bild.</div>
+      <video id="video" playsinline></video>
+      <div class="small">Wenn es nicht scannt: mehr Licht, näher ran, ruhiger halten.</div>
+    </div>
+
+    <div class="result" id="resultBox">
+      <div class="status" id="statusEmoji">📦</div>
+      <div id="resultText" class="hint">Bitte CSV laden …</div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  /** --------- State --------- */
+  let rows = [];              // array of normalized objects { artikel, preis, ean }
+  let indexByEAN = new Map(); // eanDigits -> row
+  let scanner = null;         // ZXing reader
+  let scanning = false;
+
+  /** --------- Helpers --------- */
+  const $ = (id) => document.getElementById(id);
+
+  function digitsOnly(s) {
+    return String(s ?? "").replace(/\D/g, "");
+  }
+
+  function normalizeRow(r) {
+    // Accept common variants but prefer your naming: Artikel, VK-Preis, EAN
+    const artikel = (r["Artikel"] ?? r["artikel"] ?? r["Product"] ?? r["Produkt"] ?? "").toString().trim();
+    const preis   = (r["VK-Preis"] ?? r["VK Preis"] ?? r["Preis"] ?? r["price"] ?? "").toString().trim();
+    const eanRaw  = (r["EAN"] ?? r["ean"] ?? r["Barcode"] ?? "").toString().trim();
+    const ean     = digitsOnly(eanRaw);
+    return { artikel, preis, ean };
+  }
+
+  function setResultNotLoaded() {
+    $("resultBox").classList.remove("ok", "bad");
+    $("statusEmoji").textContent = "📦";
+    $("resultText").textContent = "Bitte CSV laden …";
+  }
+
+  function setResultFound(row) {
+    $("resultBox").classList.remove("bad");
+    $("resultBox").classList.add("ok");
+    $("statusEmoji").textContent = "✅";
+
+    const priceText = row.preis ? row.preis : "-";
+    const html = `
+      <div class="kv">
+        <div class="label">Produkt:</div><div><strong>${escapeHtml(row.artikel || "-")}</strong></div>
+        <div class="label">Preis:</div><div>${escapeHtml(priceText)}</div>
+        <div class="label">EAN:</div><div class="mono">${escapeHtml(row.ean || "-")}</div>
+      </div>
+    `;
+    $("resultText").innerHTML = html;
+  }
+
+  function setResultNotFound() {
+    $("resultBox").classList.remove("ok");
+    $("resultBox").classList.add("bad");
+    $("statusEmoji").textContent = "❌";
+    $("resultText").innerHTML = `
+      <div><strong>Produkt nicht gefunden</strong></div>
+      <div><strong>Товар не найден</strong></div>
+    `;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (m) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[m]));
+  }
+
+  function lookup(query) {
+    const q = String(query ?? "").trim();
+    if (!q) { setResultNotFound(); return; }
+
+    const qDigits = digitsOnly(q);
+    // If it looks like EAN: prefer exact match by digits
+    if (qDigits.length >= 6) {
+      const hit = indexByEAN.get(qDigits);
+      if (hit) return setResultFound(hit);
+      // fallback: contains match on EAN
+      const hit2 = rows.find(r => r.ean && r.ean.includes(qDigits));
+      if (hit2) return setResultFound(hit2);
+      return setResultNotFound();
+    }
+
+    // Name search (contains)
+    const qLower = q.toLowerCase();
+    const hit = rows.find(r => (r.artikel || "").toLowerCase().includes(qLower));
+    if (hit) return setResultFound(hit);
+
+    return setResultNotFound();
+  }
+
+  /** --------- CSV Load --------- */
+  $("csvFile").addEventListener("change", async (ev) => {
+    const file = ev.target.files?.[0];
+    if (!file) { setResultNotLoaded(); return; }
+
+    setResultNotLoaded();
+    $("resultText").textContent = "CSV wird geladen …";
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      dynamicTyping: false,
+      complete: (res) => {
+        try {
+          const raw = res.data || [];
+          const normalized = raw.map(normalizeRow).filter(r => r.artikel || r.ean);
+
+          // Build index
+          rows = normalized;
+          indexByEAN = new Map();
+          for (const r of rows) {
+            if (r.ean) indexByEAN.set(r.ean, r);
+          }
+
+          $("searchInput").disabled = false;
+          $("btnScan").disabled = false;
+
+          $("resultBox").classList.remove("ok", "bad");
+          $("statusEmoji").textContent = "✅";
+          $("resultText").innerHTML = `<div class="hint">CSV geladen: <strong>${rows.length}</strong> Zeilen. Jetzt suchen oder scannen.</div>`;
+        } catch (e) {
+          $("resultBox").classList.add("bad");
+          $("statusEmoji").textContent = "❌";
+          $("resultText").textContent = "Fehler beim Verarbeiten der CSV.";
+          console.error(e);
+        }
+      },
+      error: (err) => {
+        $("resultBox").classList.add("bad");
+        $("statusEmoji").textContent = "❌";
+        $("resultText").textContent = "CSV konnte nicht gelesen werden.";
+        console.error(err);
+      }
+    });
+  });
+
+  /** --------- Search --------- */
+  $("searchInput").addEventListener("input", (ev) => {
+    lookup(ev.target.value);
+  });
+
+  /** --------- Scanner --------- */
+  async function startScan() {
+    if (scanning) return;
+    if (!rows.length) return;
+
+    $("videoWrap").style.display = "block";
+    $("btnScan").disabled = true;
+    $("btnStop").disabled = false;
+    $("searchInput").disabled = true;
+
+    scanning = true;
+
+    // ZXing Browser reader
+    scanner = new ZXingBrowser.BrowserMultiFormatReader();
+
+    try {
+      const videoEl = $("video");
+      // prefer back camera on phones
+      const constraints = {
+        audio: false,
+        video: { facingMode: { ideal: "environment" } }
+      };
+
+      // decodeFromConstraints continuously, callback receives result
+      await scanner.decodeFromConstraints(constraints, videoEl, (result, err, controls) => {
+        // keep controls so we can stop
+        if (!scanner._controls) scanner._controls = controls;
+
+        if (result) {
+          const text = result.getText ? result.getText() : String(result.text || "");
+          const ean = digitsOnly(text);
+
+          if (ean) {
+            // show in search input (nice UX)
+            $("searchInput").value = ean;
+            lookup(ean);
+
+            // stop after first successful read
+            stopScan();
+          }
+        }
+      });
+
+    } catch (e) {
+      console.error(e);
+      $("resultBox").classList.add("bad");
+      $("statusEmoji").textContent = "❌";
+      $("resultText").innerHTML = `
+        <div><strong>Kamera konnte nicht gestartet werden.</strong></div>
+        <div class="hint">Bitte Kamera-Berechtigung erlauben und HTTPS nutzen (GitHub Pages ist HTTPS).</div>
+      `;
+      stopScan(true);
+    }
+  }
+
+  function stopScan(keepUI = false) {
+    try {
+      if (scanner?._controls) scanner._controls.stop();
+    } catch {}
+    try {
+      scanner?.reset?.();
+    } catch {}
+    scanner = null;
+    scanning = false;
+
+    if (!keepUI) $("videoWrap").style.display = "none";
+    $("btnScan").disabled = !rows.length;
+    $("btnStop").disabled = true;
+    $("searchInput").disabled = !rows.length;
+  }
+
+  $("btnScan").addEventListener("click", startScan);
+  $("btnStop").addEventListener("click", () => stopScan(false));
+
+  // initial
+  setResultNotLoaded();
+})();
+</script>
+</body>
+</html>
