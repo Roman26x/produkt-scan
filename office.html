@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Büro – Etiketten Queue</title>
+<style>
+  :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  body{margin:16px;background:#f6f7f8;color:#111}
+  .card{max-width:980px;margin:auto;background:#fff;border-radius:14px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  h2{margin:0;font-size:18px}
+  button{padding:10px 12px;border:0;border-radius:10px;background:#111;color:#fff;cursor:pointer}
+  button.secondary{background:#444}
+  button.small{padding:6px 10px;border-radius:999px;font-size:12px}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:14px;vertical-align:top}
+  th{background:#fafafa}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .rowActions{display:flex;gap:8px;align-items:center}
+  .pill{font-size:12px;padding:6px 10px;border-radius:999px;background:#f0f0f0;border:1px solid #e5e5e5}
+  .hint{font-size:12px;color:#666;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="top">
+    <div>
+      <h2 id="title">Büro – Etiketten Eingang</h2>
+      <div class="hint" id="sub">Diese Seite zeigt, was Mitarbeiter ans Büro gesendet haben.</div>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <span class="pill" id="countPill">Einträge: –</span>
+
+      <label class="pill" style="display:flex; gap:8px; align-items:center;">
+        <input type="checkbox" id="onlyNew" checked />
+        <span id="onlyNewLbl">nur NEW</span>
+      </label>
+
+      <select id="langSelect" class="pill" style="padding:8px 10px;">
+        <option value="de">Deutsch</option>
+        <option value="ru">Русский</option>
+      </select>
+
+      <button id="btnReload" class="secondary">Neu laden</button>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th id="thTime">Zeit</th>
+        <th>EAN</th>
+        <th id="thSize">Größe</th>
+        <th id="thStatus">Status</th>
+        <th id="thAction">Aktion</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <div class="hint" id="autoHint">Auto-Refresh: alle 5 Sekunden</div>
+</div>
+
+<script>
+(() => {
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycby5tP2hon2uEv9KJEAy5zcnXVZSJj63yuYduI0UdKiJPaZAfhkID_pZSZrFyxWMNXka/exec";
+
+  const I18N = {
+    de: {
+      title: "Büro – Etiketten Eingang",
+      sub: "Diese Seite zeigt, was Mitarbeiter ans Büro gesendet haben.",
+      onlyNew: "nur NEW",
+      reload: "Neu laden",
+      done: "Erledigt",
+      entries: (n) => `Einträge: ${n}`,
+      auto: "Auto-Refresh: alle 5 Sekunden",
+      empty: "Keine Einträge.",
+      thTime: "Zeit",
+      thSize: "Größe",
+      thStatus: "Status",
+      thAction: "Aktion"
+    },
+    ru: {
+      title: "Офис — очередь этикеток",
+      sub: "Здесь отображается то, что сотрудники отправили в офис.",
+      onlyNew: "только NEW",
+      reload: "Обновить",
+      done: "Готово",
+      entries: (n) => `Записей: ${n}`,
+      auto: "Автообновление: каждые 5 секунд",
+      empty: "Нет записей.",
+      thTime: "Время",
+      thSize: "Размер",
+      thStatus: "Статус",
+      thAction: "Действие"
+    }
+  };
+
+  let lang = localStorage.getItem("office_lang") || "de";
+  const $ = (id) => document.getElementById(id);
+
+  function t(key, arg){
+    const dict = I18N[lang] || I18N.de;
+    const val = dict[key];
+    return (typeof val === "function") ? val(arg) : val;
+  }
+
+  function applyLang(){
+    $("title").textContent = t("title");
+    $("sub").textContent = t("sub");
+    $("onlyNewLbl").textContent = t("onlyNew");
+    $("btnReload").textContent = t("reload");
+    $("autoHint").textContent = t("auto");
+    $("thTime").textContent = t("thTime");
+    $("thSize").textContent = t("thSize");
+    $("thStatus").textContent = t("thStatus");
+    $("thAction").textContent = t("thAction");
+  }
+
+  async function loadQueue(){
+    const onlyNew = $("onlyNew").checked ? "1" : "0";
+    const url = WEBAPP_URL + "?onlyNew=" + onlyNew + "&_=" + Date.now();
+    const res = await fetch(url);
+    const data = await res.json();
+    const rows = (data && data.rows) ? data.rows : [];
+
+    $("countPill").textContent = t("entries", rows.length);
+
+    const tb = $("tbody");
+    tb.innerHTML = "";
+
+    if (!rows.length) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="5">${t("empty")}</td>`;
+      tb.appendChild(tr);
+      return;
+    }
+
+    for (const r of rows) {
+      const tr = document.createElement("tr");
+
+      const ts = r.timestamp ? String(r.timestamp) : "";
+      const ean = r.ean ? String(r.ean) : "";
+      const size = r.size ? String(r.size) : "";
+      const status = r.status ? String(r.status) : "";
+      const id = r.id ? String(r.id) : "";
+
+      tr.innerHTML = `
+        <td>${ts}</td>
+        <td class="mono">${ean}</td>
+        <td>${size}</td>
+        <td>${status}</td>
+        <td>
+          <div class="rowActions">
+            <button class="small" data-id="${id}" ${status !== "NEW" ? "disabled" : ""}>${t("done")}</button>
+          </div>
+        </td>
+      `;
+
+      const btn = tr.querySelector("button[data-id]");
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        await markDone(id);
+        await loadQueue();
+      });
+
+      tb.appendChild(tr);
+    }
+  }
+
+  async function markDone(id){
+    try{
+      const payload = { action: "done", id };
+      await fetch(WEBAPP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+    } catch(e){
+      // ignore
+    }
+  }
+
+  $("btnReload").addEventListener("click", loadQueue);
+  $("onlyNew").addEventListener("change", loadQueue);
+
+  $("langSelect").value = lang;
+  $("langSelect").addEventListener("change", (ev) => {
+    lang = ev.target.value;
+    localStorage.setItem("office_lang", lang);
+    applyLang();
+    loadQueue();
+  });
+
+  applyLang();
+  loadQueue();
+  setInterval(loadQueue, 5000);
+})();
+</script>
+</body>
+</html>
