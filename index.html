@@ -32,7 +32,8 @@
     .small { font-size: 12px; color: #666; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .pill { font-size:12px; padding:6px 10px; border-radius:999px; background:#f0f0f0; border:1px solid #e5e5e5; }
-    .right { display:flex; align-items:center; gap:10px; }
+    .right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .toggle { display:flex; align-items:center; gap:8px; }
   </style>
 </head>
 
@@ -42,6 +43,12 @@
       <h1 id="title">Produkt-Suche (CSV + EAN Scan)</h1>
       <div class="right">
         <span class="pill" id="dbStatus">DB: –</span>
+
+        <label class="pill toggle" title="Sound an/aus">
+          <input type="checkbox" id="soundToggle" checked />
+          <span id="soundLbl">🔊</span>
+        </label>
+
         <select id="langSelect" style="width:auto; min-width:140px;">
           <option value="de">Deutsch</option>
           <option value="ru">Русский</option>
@@ -145,7 +152,61 @@
   let lastFound = null;
 
   const $ = (id) => document.getElementById(id);
+  const digitsOnly = (s) => String(s ?? "").replace(/\D/g, "");
 
+  /** -------- Sound Engine (no files needed) -------- */
+  let audioCtx = null;
+  function soundEnabled() { return $("soundToggle")?.checked; }
+
+  async function ensureAudio() {
+    if (!soundEnabled()) return null;
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") {
+      try { await audioCtx.resume(); } catch {}
+    }
+    return audioCtx;
+  }
+
+  function beep(freq = 880, ms = 120, type = "sine", gainVal = 0.08) {
+    if (!soundEnabled()) return;
+    ensureAudio().then((ctx) => {
+      if (!ctx) return;
+      const t0 = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(gainVal, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + ms / 1000);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(t0);
+      osc.stop(t0 + ms / 1000 + 0.02);
+    });
+  }
+
+  function successSound() { beep(880, 110, "sine", 0.09); setTimeout(() => beep(1320, 90, "sine", 0.07), 120); }
+  function errorSound()   { beep(220, 160, "square", 0.06); setTimeout(() => beep(180, 160, "square", 0.05), 170); }
+  function sendSound()    { beep(660, 90, "triangle", 0.07); setTimeout(() => beep(990, 70, "triangle", 0.06), 100); }
+
+  function vibrate(pattern = [40, 20, 40]) {
+    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch {}
+  }
+
+  // Persist sound setting
+  $("soundToggle").checked = (localStorage.getItem("sound") ?? "1") === "1";
+  $("soundToggle").addEventListener("change", () => {
+    localStorage.setItem("sound", $("soundToggle").checked ? "1" : "0");
+    // touch audio context (some browsers need it)
+    if ($("soundToggle").checked) ensureAudio();
+  });
+
+  /** -------- i18n helpers -------- */
   function t(key, arg) {
     const dict = I18N[lang] || I18N.de;
     const val = dict[key];
@@ -166,8 +227,6 @@
     $("dbStatus").textContent = t("db", rows.length || "–");
     if (!rows.length) $("resultText").textContent = t("notLoaded");
   }
-
-  const digitsOnly = (s) => String(s ?? "").replace(/\D/g, "");
 
   function normalizeRow(r) {
     const artikel = (r["Artikel"] ?? r["artikel"] ?? r["Product"] ?? r["Produkt"] ?? "").toString().trim();
@@ -192,7 +251,7 @@
     $("sizeSelect").disabled = true;
   }
 
-  function setFound(row) {
+  function setFound(row, playSound = true) {
     $("resultBox").classList.remove("bad");
     $("resultBox").classList.add("ok");
     $("statusEmoji").textContent = "✅";
@@ -209,9 +268,11 @@
         <div class="label">EAN:</div><div class="mono">${escapeHtml(row.ean || "-")}</div>
       </div>
     `;
+
+    if (playSound) { successSound(); vibrate([30]); }
   }
 
-  function setNotFound() {
+  function setNotFound(playSound = true) {
     $("resultBox").classList.remove("ok");
     $("resultBox").classList.add("bad");
     $("statusEmoji").textContent = "❌";
@@ -222,28 +283,31 @@
     lastFound = null;
     $("btnSendOffice").disabled = true;
     $("sizeSelect").disabled = true;
+
+    if (playSound) { errorSound(); vibrate([60, 30, 60]); }
   }
 
-  function lookup(query) {
+  function lookup(query, playSound = true) {
     const q = String(query ?? "").trim();
-    if (!q) { setNotFound(); return; }
+    if (!q) { setNotFound(false); return; }
 
     const qDigits = digitsOnly(q);
     if (qDigits.length >= 6) {
       const hit = indexByEAN.get(qDigits);
-      if (hit) return setFound(hit);
+      if (hit) return setFound(hit, playSound);
       const hit2 = rows.find(r => r.ean && r.ean.includes(qDigits));
-      if (hit2) return setFound(hit2);
-      return setNotFound();
+      if (hit2) return setFound(hit2, playSound);
+      return setNotFound(playSound);
     }
 
     const qLower = q.toLowerCase();
     const hit = rows.find(r => (r.artikel || "").toLowerCase().includes(qLower));
-    if (hit) return setFound(hit);
+    if (hit) return setFound(hit, playSound);
 
-    return setNotFound();
+    return setNotFound(playSound);
   }
 
+  /** -------- CSV Load -------- */
   $("csvFile").addEventListener("change", (ev) => {
     const file = ev.target.files?.[0];
     if (!file) { setNotLoaded(); return; }
@@ -273,19 +337,27 @@
         $("sizeSelect").disabled = false;
         $("btnSendOffice").disabled = true;
         lastFound = null;
+
+        // small confirmation sound
+        beep(520, 70, "sine", 0.05);
       },
       error: () => {
         $("resultBox").classList.add("bad");
         $("statusEmoji").textContent = "❌";
         $("resultText").textContent = (lang === "ru") ? "Ошибка чтения CSV." : "CSV konnte nicht gelesen werden.";
+        errorSound();
       }
     });
   });
 
-  $("searchInput").addEventListener("input", (ev) => lookup(ev.target.value));
+  $("searchInput").addEventListener("input", (ev) => lookup(ev.target.value, true));
 
+  /** -------- Scanner -------- */
   async function startScan() {
     if (scanning || !rows.length) return;
+
+    // wake up audio context on user gesture
+    await ensureAudio();
 
     $("videoWrap").style.display = "block";
     $("btnScan").disabled = true;
@@ -306,7 +378,8 @@
           const ean = digitsOnly(text);
           if (ean) {
             $("searchInput").value = ean;
-            lookup(ean);
+            // playSound true because scan is a deliberate action
+            lookup(ean, true);
             stopScan();
           }
         }
@@ -318,6 +391,7 @@
         <div><strong>${lang === "ru" ? "Не удалось запустить камеру." : "Kamera konnte nicht gestartet werden."}</strong></div>
         <div class="hint">${lang === "ru" ? "Разрешите доступ к камере и используйте HTTPS." : "Bitte Kamera-Berechtigung erlauben und HTTPS nutzen."}</div>
       `;
+      errorSound();
       stopScan(true);
     }
   }
@@ -337,9 +411,14 @@
   $("btnScan").addEventListener("click", startScan);
   $("btnStop").addEventListener("click", () => stopScan(false));
 
+  /** -------- Send to Office -------- */
   async function sendToOffice() {
+    // user gesture -> resume audio if needed
+    await ensureAudio();
+
     if (!lastFound || !lastFound.ean) {
       alert(t("noFound"));
+      errorSound();
       return;
     }
     const size = $("sizeSelect").value;
@@ -354,21 +433,30 @@
       });
 
       const data = await res.json().catch(() => null);
-      if (data && data.ok) alert(t("sentOk"));
-      else alert(t("sentFail"));
+      if (data && data.ok) {
+        alert(t("sentOk"));
+        sendSound();
+        vibrate([20]);
+      } else {
+        alert(t("sentFail"));
+        errorSound();
+      }
     } catch (e) {
       alert(t("sentFail"));
+      errorSound();
     }
   }
 
   $("btnSendOffice").addEventListener("click", sendToOffice);
 
+  /** -------- Language -------- */
   $("langSelect").value = lang;
   $("langSelect").addEventListener("change", (ev) => {
     lang = ev.target.value;
     localStorage.setItem("lang", lang);
     applyLang();
-    if (lastFound) setFound(lastFound);
+    // re-render found product in the new language (without extra sound)
+    if (lastFound) setFound(lastFound, false);
   });
 
   applyLang();
