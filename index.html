@@ -5,18 +5,17 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Produkt-Suche (CSV + EAN-Scan)</title>
 
-  <!-- CSV Parser (PapaParse) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <!-- Barcode Scanner (ZXing Browser UMD) -->
   <script src="https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js"></script>
 
   <style>
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
     body { margin: 0; padding: 16px; background: #f6f7f8; color: #111; }
-    .card { max-width: 760px; margin: 0 auto; background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
-    h1 { font-size: 18px; margin: 0 0 12px; }
-    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    input[type="file"], input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: #fff; }
+    .card { max-width: 820px; margin: 0 auto; background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    h1 { font-size: 18px; margin: 0; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+    input[type="file"], input[type="text"], select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: #fff; }
     button { padding: 12px 14px; border: 0; border-radius: 10px; background: #111; color: #fff; cursor: pointer; }
     button.secondary { background: #444; }
     button:disabled { opacity: .5; cursor: not-allowed; }
@@ -32,36 +31,59 @@
     video { width: 100%; border-radius: 12px; background: #000; }
     .small { font-size: 12px; color: #666; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .pill { font-size:12px; padding:6px 10px; border-radius:999px; background:#f0f0f0; border:1px solid #e5e5e5; }
+    .right { display:flex; align-items:center; gap:10px; }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <h1>Produkt-Suche (CSV + EAN Scan)</h1>
-
-    <div class="row">
-      <div style="flex: 1 1 320px;">
-        <input id="csvFile" type="file" accept=".csv,text/csv" />
-        <div class="hint">CSV muss Spalten haben: <span class="mono">Artikel</span>, <span class="mono">VK-Preis</span>, <span class="mono">EAN</span></div>
+    <div class="topbar">
+      <h1 id="title">Produkt-Suche (CSV + EAN Scan)</h1>
+      <div class="right">
+        <span class="pill" id="dbStatus">DB: –</span>
+        <select id="langSelect" style="width:auto; min-width:140px;">
+          <option value="de">Deutsch</option>
+          <option value="ru">Русский</option>
+        </select>
       </div>
     </div>
 
-    <div style="height: 10px;"></div>
+    <div class="row">
+      <div style="flex: 1 1 360px;">
+        <input id="csvFile" type="file" accept=".csv,text/csv" />
+        <div class="hint" id="csvHint">CSV muss Spalten haben: <span class="mono">Artikel</span>, <span class="mono">VK-Preis</span>, <span class="mono">EAN</span></div>
+      </div>
+    </div>
 
     <div class="row">
-      <div style="flex: 1 1 320px;">
+      <div style="flex: 1 1 360px;">
         <input id="searchInput" type="text" placeholder="Suchen nach Produktname oder EAN …" disabled />
-        <div class="hint">Tipp: Du kannst auch nur einen Teil tippen (z. B. „milch“ oder „400123“).</div>
+        <div class="hint" id="searchHint">Tipp: Du kannst auch nur einen Teil tippen (z. B. „milch“ oder „400123“).</div>
       </div>
 
       <button id="btnScan" disabled>📷 EAN scannen</button>
       <button id="btnStop" class="secondary" disabled>⏹ Stop</button>
     </div>
 
+    <div class="row">
+      <div style="flex: 1 1 220px;">
+        <select id="sizeSelect" disabled>
+          <!-- Größen aus deinem Etikettenprogramm -->
+          <option value="80x39">80×39</option>
+          <option value="50x25">50×25</option>
+          <option value="35x70">35×70</option>
+        </select>
+        <div class="hint" id="sizeHint">Etikettgröße wählen</div>
+      </div>
+
+      <button id="btnSendOffice" disabled>🏷️ Etikett ans Büro senden</button>
+    </div>
+
     <div class="videoWrap" id="videoWrap">
-      <div class="hint">Kamera läuft – halte den Barcode ruhig ins Bild.</div>
+      <div class="hint" id="scanHint">Kamera läuft – halte den Barcode ruhig ins Bild.</div>
       <video id="video" playsinline></video>
-      <div class="small">Wenn es nicht scannt: mehr Licht, näher ran, ruhiger halten.</div>
+      <div class="small" id="scanTip">Wenn es nicht scannt: mehr Licht, näher ran, ruhiger halten.</div>
     </div>
 
     <div class="result" id="resultBox">
@@ -72,58 +94,87 @@
 
 <script>
 (() => {
-  /** --------- State --------- */
-  let rows = [];              // array of normalized objects { artikel, preis, ean }
-  let indexByEAN = new Map(); // eanDigits -> row
-  let scanner = null;         // ZXing reader
-  let scanning = false;
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycby5tP2hon2uEv9KJEAy5zcnXVZSJj63yuYduI0UdKiJPaZAfhkID_pZSZrFyxWMNXka/exec";
 
-  /** --------- Helpers --------- */
+  const I18N = {
+    de: {
+      title: "Produkt-Suche (CSV + EAN Scan)",
+      csvHint: "CSV muss Spalten haben: Artikel, VK-Preis, EAN",
+      searchPh: "Suchen nach Produktname oder EAN …",
+      searchHint: "Tipp: Du kannst auch nur einen Teil tippen (z. B. „milch“ oder „400123“).",
+      scanBtn: "📷 EAN scannen",
+      stopBtn: "⏹ Stop",
+      sizeHint: "Etikettgröße wählen",
+      sendBtn: "🏷️ Etikett ans Büro senden",
+      scanHint: "Kamera läuft – halte den Barcode ruhig ins Bild.",
+      scanTip: "Wenn es nicht scannt: mehr Licht, näher ran, ruhiger halten.",
+      loadingCsv: "CSV wird geladen …",
+      loadedCsv: (n) => `CSV geladen: ${n} Zeilen. Jetzt suchen oder scannen.`,
+      notLoaded: "Bitte CSV laden …",
+      sentOk: "Gesendet ✅",
+      sentFail: "Fehler beim Senden ❌",
+      noFound: "Kein Produkt gefunden.",
+      db: (n) => `DB: ${n}`
+    },
+    ru: {
+      title: "Поиск товара (CSV + скан EAN)",
+      csvHint: "CSV должен иметь колонки: Artikel, VK-Preis, EAN",
+      searchPh: "Поиск по названию или EAN …",
+      searchHint: "Совет: можно вводить часть слова или часть EAN.",
+      scanBtn: "📷 Сканировать EAN",
+      stopBtn: "⏹ Стоп",
+      sizeHint: "Выберите размер этикетки",
+      sendBtn: "🏷️ Отправить в офис",
+      scanHint: "Камера включена — держите штрих-код ровно в кадре.",
+      scanTip: "Если не сканирует: больше света, ближе, держите ровнее.",
+      loadingCsv: "Загрузка CSV …",
+      loadedCsv: (n) => `CSV загружен: строк ${n}. Можно искать или сканировать.`,
+      notLoaded: "Пожалуйста, загрузите CSV …",
+      sentOk: "Отправлено ✅",
+      sentFail: "Ошибка отправки ❌",
+      noFound: "Товар не найден.",
+      db: (n) => `БД: ${n}`
+    }
+  };
+
+  let lang = localStorage.getItem("lang") || "de";
+  let rows = [];
+  let indexByEAN = new Map();
+  let scanner = null;
+  let scanning = false;
+  let lastFound = null;
+
   const $ = (id) => document.getElementById(id);
 
-  function digitsOnly(s) {
-    return String(s ?? "").replace(/\D/g, "");
+  function t(key, arg) {
+    const dict = I18N[lang] || I18N.de;
+    const val = dict[key];
+    return (typeof val === "function") ? val(arg) : val;
   }
 
+  function applyLang() {
+    $("title").textContent = t("title");
+    $("csvHint").textContent = t("csvHint");
+    $("searchInput").placeholder = t("searchPh");
+    $("searchHint").textContent = t("searchHint");
+    $("btnScan").textContent = t("scanBtn");
+    $("btnStop").textContent = t("stopBtn");
+    $("sizeHint").textContent = t("sizeHint");
+    $("btnSendOffice").textContent = t("sendBtn");
+    $("scanHint").textContent = t("scanHint");
+    $("scanTip").textContent = t("scanTip");
+    $("dbStatus").textContent = t("db", rows.length || "–");
+    if (!rows.length) $("resultText").textContent = t("notLoaded");
+  }
+
+  const digitsOnly = (s) => String(s ?? "").replace(/\D/g, "");
+
   function normalizeRow(r) {
-    // Accept common variants but prefer your naming: Artikel, VK-Preis, EAN
     const artikel = (r["Artikel"] ?? r["artikel"] ?? r["Product"] ?? r["Produkt"] ?? "").toString().trim();
     const preis   = (r["VK-Preis"] ?? r["VK Preis"] ?? r["Preis"] ?? r["price"] ?? "").toString().trim();
     const eanRaw  = (r["EAN"] ?? r["ean"] ?? r["Barcode"] ?? "").toString().trim();
     const ean     = digitsOnly(eanRaw);
     return { artikel, preis, ean };
-  }
-
-  function setResultNotLoaded() {
-    $("resultBox").classList.remove("ok", "bad");
-    $("statusEmoji").textContent = "📦";
-    $("resultText").textContent = "Bitte CSV laden …";
-  }
-
-  function setResultFound(row) {
-    $("resultBox").classList.remove("bad");
-    $("resultBox").classList.add("ok");
-    $("statusEmoji").textContent = "✅";
-
-    const priceText = row.preis ? row.preis : "-";
-    const html = `
-      <div class="kv">
-        <div class="label">Produkt:</div><div><strong>${escapeHtml(row.artikel || "-")}</strong></div>
-        <div class="label">Preis:</div><div>${escapeHtml(priceText)}</div>
-        <div class="label">EAN:</div><div class="mono">${escapeHtml(row.ean || "-")}</div>
-      </div>
-    `;
-    $("resultText").innerHTML = html;
-  }
-
-  function setResultNotFound() {
-    $("resultBox").classList.remove("ok");
-    $("resultBox").classList.add("bad");
-    $("statusEmoji").textContent = "❌";
-    $("resultText").innerHTML = `
-      <div><strong>Produkt nicht gefunden</strong></div>
-      <div><strong>Товар не найден</strong></div>
-    `;
   }
 
   function escapeHtml(s) {
@@ -132,84 +183,109 @@
     }[m]));
   }
 
-  function lookup(query) {
-    const q = String(query ?? "").trim();
-    if (!q) { setResultNotFound(); return; }
-
-    const qDigits = digitsOnly(q);
-    // If it looks like EAN: prefer exact match by digits
-    if (qDigits.length >= 6) {
-      const hit = indexByEAN.get(qDigits);
-      if (hit) return setResultFound(hit);
-      // fallback: contains match on EAN
-      const hit2 = rows.find(r => r.ean && r.ean.includes(qDigits));
-      if (hit2) return setResultFound(hit2);
-      return setResultNotFound();
-    }
-
-    // Name search (contains)
-    const qLower = q.toLowerCase();
-    const hit = rows.find(r => (r.artikel || "").toLowerCase().includes(qLower));
-    if (hit) return setResultFound(hit);
-
-    return setResultNotFound();
+  function setNotLoaded() {
+    $("resultBox").classList.remove("ok", "bad");
+    $("statusEmoji").textContent = "📦";
+    $("resultText").textContent = t("notLoaded");
+    lastFound = null;
+    $("btnSendOffice").disabled = true;
+    $("sizeSelect").disabled = true;
   }
 
-  /** --------- CSV Load --------- */
-  $("csvFile").addEventListener("change", async (ev) => {
-    const file = ev.target.files?.[0];
-    if (!file) { setResultNotLoaded(); return; }
+  function setFound(row) {
+    $("resultBox").classList.remove("bad");
+    $("resultBox").classList.add("ok");
+    $("statusEmoji").textContent = "✅";
 
-    setResultNotLoaded();
-    $("resultText").textContent = "CSV wird geladen …";
+    lastFound = row;
+    $("btnSendOffice").disabled = false;
+    $("sizeSelect").disabled = false;
+
+    const priceText = row.preis ? row.preis : "-";
+    $("resultText").innerHTML = `
+      <div class="kv">
+        <div class="label">${lang === "ru" ? "Товар:" : "Produkt:"}</div><div><strong>${escapeHtml(row.artikel || "-")}</strong></div>
+        <div class="label">${lang === "ru" ? "Цена:" : "Preis:"}</div><div>${escapeHtml(priceText)}</div>
+        <div class="label">EAN:</div><div class="mono">${escapeHtml(row.ean || "-")}</div>
+      </div>
+    `;
+  }
+
+  function setNotFound() {
+    $("resultBox").classList.remove("ok");
+    $("resultBox").classList.add("bad");
+    $("statusEmoji").textContent = "❌";
+    $("resultText").innerHTML = `
+      <div><strong>Produkt nicht gefunden</strong></div>
+      <div><strong>Товар не найден</strong></div>
+    `;
+    lastFound = null;
+    $("btnSendOffice").disabled = true;
+    $("sizeSelect").disabled = true;
+  }
+
+  function lookup(query) {
+    const q = String(query ?? "").trim();
+    if (!q) { setNotFound(); return; }
+
+    const qDigits = digitsOnly(q);
+    if (qDigits.length >= 6) {
+      const hit = indexByEAN.get(qDigits);
+      if (hit) return setFound(hit);
+      const hit2 = rows.find(r => r.ean && r.ean.includes(qDigits));
+      if (hit2) return setFound(hit2);
+      return setNotFound();
+    }
+
+    const qLower = q.toLowerCase();
+    const hit = rows.find(r => (r.artikel || "").toLowerCase().includes(qLower));
+    if (hit) return setFound(hit);
+
+    return setNotFound();
+  }
+
+  $("csvFile").addEventListener("change", (ev) => {
+    const file = ev.target.files?.[0];
+    if (!file) { setNotLoaded(); return; }
+
+    setNotLoaded();
+    $("resultText").textContent = t("loadingCsv");
 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      dynamicTyping: false,
       complete: (res) => {
-        try {
-          const raw = res.data || [];
-          const normalized = raw.map(normalizeRow).filter(r => r.artikel || r.ean);
+        const raw = res.data || [];
+        const normalized = raw.map(normalizeRow).filter(r => r.artikel || r.ean);
 
-          // Build index
-          rows = normalized;
-          indexByEAN = new Map();
-          for (const r of rows) {
-            if (r.ean) indexByEAN.set(r.ean, r);
-          }
+        rows = normalized;
+        indexByEAN = new Map();
+        for (const r of rows) if (r.ean) indexByEAN.set(r.ean, r);
 
-          $("searchInput").disabled = false;
-          $("btnScan").disabled = false;
+        $("searchInput").disabled = false;
+        $("btnScan").disabled = false;
 
-          $("resultBox").classList.remove("ok", "bad");
-          $("statusEmoji").textContent = "✅";
-          $("resultText").innerHTML = `<div class="hint">CSV geladen: <strong>${rows.length}</strong> Zeilen. Jetzt suchen oder scannen.</div>`;
-        } catch (e) {
-          $("resultBox").classList.add("bad");
-          $("statusEmoji").textContent = "❌";
-          $("resultText").textContent = "Fehler beim Verarbeiten der CSV.";
-          console.error(e);
-        }
+        $("resultBox").classList.remove("ok", "bad");
+        $("statusEmoji").textContent = "✅";
+        $("resultText").textContent = t("loadedCsv", rows.length);
+        $("dbStatus").textContent = t("db", rows.length);
+
+        $("sizeSelect").disabled = false;
+        $("btnSendOffice").disabled = true;
+        lastFound = null;
       },
-      error: (err) => {
+      error: () => {
         $("resultBox").classList.add("bad");
         $("statusEmoji").textContent = "❌";
-        $("resultText").textContent = "CSV konnte nicht gelesen werden.";
-        console.error(err);
+        $("resultText").textContent = (lang === "ru") ? "Ошибка чтения CSV." : "CSV konnte nicht gelesen werden.";
       }
     });
   });
 
-  /** --------- Search --------- */
-  $("searchInput").addEventListener("input", (ev) => {
-    lookup(ev.target.value);
-  });
+  $("searchInput").addEventListener("input", (ev) => lookup(ev.target.value));
 
-  /** --------- Scanner --------- */
   async function startScan() {
-    if (scanning) return;
-    if (!rows.length) return;
+    if (scanning || !rows.length) return;
 
     $("videoWrap").style.display = "block";
     $("btnScan").disabled = true;
@@ -217,57 +293,38 @@
     $("searchInput").disabled = true;
 
     scanning = true;
-
-    // ZXing Browser reader
     scanner = new ZXingBrowser.BrowserMultiFormatReader();
 
     try {
       const videoEl = $("video");
-      // prefer back camera on phones
-      const constraints = {
-        audio: false,
-        video: { facingMode: { ideal: "environment" } }
-      };
+      const constraints = { audio: false, video: { facingMode: { ideal: "environment" } } };
 
-      // decodeFromConstraints continuously, callback receives result
       await scanner.decodeFromConstraints(constraints, videoEl, (result, err, controls) => {
-        // keep controls so we can stop
         if (!scanner._controls) scanner._controls = controls;
-
         if (result) {
           const text = result.getText ? result.getText() : String(result.text || "");
           const ean = digitsOnly(text);
-
           if (ean) {
-            // show in search input (nice UX)
             $("searchInput").value = ean;
             lookup(ean);
-
-            // stop after first successful read
             stopScan();
           }
         }
       });
-
     } catch (e) {
-      console.error(e);
       $("resultBox").classList.add("bad");
       $("statusEmoji").textContent = "❌";
       $("resultText").innerHTML = `
-        <div><strong>Kamera konnte nicht gestartet werden.</strong></div>
-        <div class="hint">Bitte Kamera-Berechtigung erlauben und HTTPS nutzen (GitHub Pages ist HTTPS).</div>
+        <div><strong>${lang === "ru" ? "Не удалось запустить камеру." : "Kamera konnte nicht gestartet werden."}</strong></div>
+        <div class="hint">${lang === "ru" ? "Разрешите доступ к камере и используйте HTTPS." : "Bitte Kamera-Berechtigung erlauben und HTTPS nutzen."}</div>
       `;
       stopScan(true);
     }
   }
 
   function stopScan(keepUI = false) {
-    try {
-      if (scanner?._controls) scanner._controls.stop();
-    } catch {}
-    try {
-      scanner?.reset?.();
-    } catch {}
+    try { if (scanner?._controls) scanner._controls.stop(); } catch {}
+    try { scanner?.reset?.(); } catch {}
     scanner = null;
     scanning = false;
 
@@ -280,8 +337,42 @@
   $("btnScan").addEventListener("click", startScan);
   $("btnStop").addEventListener("click", () => stopScan(false));
 
-  // initial
-  setResultNotLoaded();
+  async function sendToOffice() {
+    if (!lastFound || !lastFound.ean) {
+      alert(t("noFound"));
+      return;
+    }
+    const size = $("sizeSelect").value;
+
+    try {
+      const payload = { action: "add", ean: lastFound.ean, size: size, note: "" };
+
+      const res = await fetch(WEBAPP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json().catch(() => null);
+      if (data && data.ok) alert(t("sentOk"));
+      else alert(t("sentFail"));
+    } catch (e) {
+      alert(t("sentFail"));
+    }
+  }
+
+  $("btnSendOffice").addEventListener("click", sendToOffice);
+
+  $("langSelect").value = lang;
+  $("langSelect").addEventListener("change", (ev) => {
+    lang = ev.target.value;
+    localStorage.setItem("lang", lang);
+    applyLang();
+    if (lastFound) setFound(lastFound);
+  });
+
+  applyLang();
+  setNotLoaded();
 })();
 </script>
 </body>
