@@ -21,6 +21,9 @@
   .rowActions{display:flex;gap:8px;align-items:center}
   .pill{font-size:12px;padding:6px 10px;border-radius:999px;background:#f0f0f0;border:1px solid #e5e5e5}
   .hint{font-size:12px;color:#666;margin-top:6px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  input,select{padding:10px;border:1px solid #ddd;border-radius:10px}
+  .hidden{display:none;}
 </style>
 </head>
 <body>
@@ -28,10 +31,11 @@
   <div class="top">
     <div>
       <h2 id="title">Büro – Etiketten Eingang</h2>
-      <div class="hint" id="sub">Diese Seite zeigt, was Mitarbeiter ans Büro gesendet haben.</div>
+      <div class="hint" id="sub">Login erforderlich.</div>
     </div>
 
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <span class="pill" id="userPill">—</span>
       <span class="pill" id="countPill">Einträge: –</span>
 
       <label class="pill" style="display:flex; gap:8px; align-items:center;">
@@ -45,125 +49,183 @@
       </select>
 
       <button id="btnReload" class="secondary">Neu laden</button>
+      <button id="btnLogout" class="secondary">Logout</button>
     </div>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th id="thTime">Zeit</th>
-        <th>EAN</th>
-        <th id="thSize">Größe</th>
-        <th id="thStatus">Status</th>
-        <th id="thAction">Aktion</th>
-      </tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
+  <div id="loginBox">
+    <div class="row">
+      <input id="loginUser" placeholder="Benutzername" />
+      <input id="loginPin" placeholder="PIN" type="password" inputmode="numeric" />
+      <button id="btnLogin">Login</button>
+    </div>
+    <div class="hint" id="loginHint">office-Account verwenden.</div>
+  </div>
 
-  <div class="hint" id="autoHint">Auto-Refresh: alle 5 Sekunden</div>
+  <div id="appBox" class="hidden">
+    <table>
+      <thead>
+        <tr>
+          <th id="thTime">Zeit</th>
+          <th>EAN</th>
+          <th id="thSize">Größe</th>
+          <th id="thStatus">Status</th>
+          <th id="thNote">Wer</th>
+          <th id="thAction">Aktion</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="hint" id="autoHint">Auto-Refresh: alle 5 Sekunden</div>
+  </div>
 </div>
 
 <script>
 (() => {
-  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycby5tP2hon2uEv9KJEAy5zcnXVZSJj63yuYduI0UdKiJPaZAfhkID_pZSZrFyxWMNXka/exec";
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx9SEn2wy7NRI2aRxwq4b7vYNqqe4nYIWGTVIJKjvk4R3ixo4i5f1EuKJYfduZDc2HS/exec";
+  const $ = (id)=>document.getElementById(id);
 
   const I18N = {
-    de: {
-      title: "Büro – Etiketten Eingang",
-      sub: "Diese Seite zeigt, was Mitarbeiter ans Büro gesendet haben.",
-      onlyNew: "nur NEW",
-      reload: "Neu laden",
-      done: "Erledigt",
-      entries: (n) => `Einträge: ${n}`,
-      auto: "Auto-Refresh: alle 5 Sekunden",
-      empty: "Keine Einträge.",
-      thTime: "Zeit",
-      thSize: "Größe",
-      thStatus: "Status",
-      thAction: "Aktion"
+    de:{
+      title:"Büro – Etiketten Eingang",
+      sub:"Login erforderlich.",
+      onlyNew:"nur NEW",
+      reload:"Neu laden",
+      logout:"Logout",
+      login:"Login",
+      loginHint:"office-Account verwenden.",
+      badCred:"Falscher Benutzername oder PIN.",
+      disabled:"Account ist deaktiviert.",
+      entries:(n)=>`Einträge: ${n}`,
+      auto:"Auto-Refresh: alle 5 Sekunden",
+      empty:"Keine Einträge.",
+      thTime:"Zeit", thSize:"Größe", thStatus:"Status", thAction:"Aktion", thNote:"Wer",
+      done:"Erledigt"
     },
-    ru: {
-      title: "Офис — очередь этикеток",
-      sub: "Здесь отображается то, что сотрудники отправили в офис.",
-      onlyNew: "только NEW",
-      reload: "Обновить",
-      done: "Готово",
-      entries: (n) => `Записей: ${n}`,
-      auto: "Автообновление: каждые 5 секунд",
-      empty: "Нет записей.",
-      thTime: "Время",
-      thSize: "Размер",
-      thStatus: "Статус",
-      thAction: "Действие"
+    ru:{
+      title:"Офис — очередь этикеток",
+      sub:"Требуется вход.",
+      onlyNew:"только NEW",
+      reload:"Обновить",
+      logout:"Выйти",
+      login:"Войти",
+      loginHint:"используйте office-аккаунт.",
+      badCred:"Неверное имя пользователя или PIN.",
+      disabled:"Аккаунт отключен.",
+      entries:(n)=>`Записей: ${n}`,
+      auto:"Автообновление: каждые 5 секунд",
+      empty:"Нет записей.",
+      thTime:"Время", thSize:"Размер", thStatus:"Статус", thAction:"Действие", thNote:"Кто",
+      done:"Готово"
     }
   };
 
   let lang = localStorage.getItem("office_lang") || "de";
-  const $ = (id) => document.getElementById(id);
+  let token = localStorage.getItem("token_office") || "";
+  let username = localStorage.getItem("user_office") || "";
+  let role = localStorage.getItem("role_office") || "";
 
-  function t(key, arg){
-    const dict = I18N[lang] || I18N.de;
-    const val = dict[key];
-    return (typeof val === "function") ? val(arg) : val;
+  function t(k,a){ const d=I18N[lang]||I18N.de; const v=d[k]; return typeof v==="function"?v(a):v; }
+  function applyLang(){
+    $("title").textContent=t("title");
+    $("sub").textContent=t("sub");
+    $("onlyNewLbl").textContent=t("onlyNew");
+    $("btnReload").textContent=t("reload");
+    $("btnLogout").textContent=t("logout");
+    $("btnLogin").textContent=t("login");
+    $("loginHint").textContent=t("loginHint");
+    $("autoHint").textContent=t("auto");
+    $("thTime").textContent=t("thTime");
+    $("thSize").textContent=t("thSize");
+    $("thStatus").textContent=t("thStatus");
+    $("thAction").textContent=t("thAction");
+    $("thNote").textContent=t("thNote");
   }
 
-  function applyLang(){
-    $("title").textContent = t("title");
-    $("sub").textContent = t("sub");
-    $("onlyNewLbl").textContent = t("onlyNew");
-    $("btnReload").textContent = t("reload");
-    $("autoHint").textContent = t("auto");
-    $("thTime").textContent = t("thTime");
-    $("thSize").textContent = t("thSize");
-    $("thStatus").textContent = t("thStatus");
-    $("thAction").textContent = t("thAction");
+  async function apiPost(payload){
+    const res = await fetch(WEBAPP_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  }
+
+  async function apiGet(url){
+    const res = await fetch(url);
+    return await res.json();
+  }
+
+  function setLoginUI(logged){
+    $("loginBox").classList.toggle("hidden", logged);
+    $("appBox").classList.toggle("hidden", !logged);
+    $("userPill").textContent = logged ? `${username} (${role})` : "—";
+  }
+
+  async function login(){
+    const u=String($("loginUser").value||"").trim();
+    const p=String($("loginPin").value||"").replace(/\D/g,"");
+    const data = await apiPost({ action:"auth_login", username:u, pin:p });
+    if(data && data.ok){
+      token=data.token; username=data.user.username; role=data.user.role;
+      localStorage.setItem("token_office", token);
+      localStorage.setItem("user_office", username);
+      localStorage.setItem("role_office", role);
+      setLoginUI(true);
+      loadQueue();
+      return;
+    }
+    if(data && data.error==="USER_DISABLED") alert(t("disabled"));
+    else alert(t("badCred"));
+  }
+
+  function logout(){
+    token=""; username=""; role="";
+    localStorage.removeItem("token_office");
+    localStorage.removeItem("user_office");
+    localStorage.removeItem("role_office");
+    setLoginUI(false);
   }
 
   async function loadQueue(){
+    if(!token) return;
     const onlyNew = $("onlyNew").checked ? "1" : "0";
-    const url = WEBAPP_URL + "?onlyNew=" + onlyNew + "&_=" + Date.now();
-    const res = await fetch(url);
-    const data = await res.json();
+    const url = WEBAPP_URL + "?action=queue_list&onlyNew=" + onlyNew + "&token=" + encodeURIComponent(token) + "&_=" + Date.now();
+    const data = await apiGet(url);
     const rows = (data && data.rows) ? data.rows : [];
-
     $("countPill").textContent = t("entries", rows.length);
 
-    const tb = $("tbody");
-    tb.innerHTML = "";
-
-    if (!rows.length) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="5">${t("empty")}</td>`;
+    const tb=$("tbody");
+    tb.innerHTML="";
+    if(!rows.length){
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td colspan="6">${t("empty")}</td>`;
       tb.appendChild(tr);
       return;
     }
 
-    for (const r of rows) {
-      const tr = document.createElement("tr");
+    for(const r of rows){
+      const tr=document.createElement("tr");
+      const ts=r.timestamp?String(r.timestamp):"";
+      const ean=r.ean?String(r.ean):"";
+      const size=r.size?String(r.size):"";
+      const status=r.status?String(r.status):"";
+      const note=r.note?String(r.note):"";
+      const id=r.id?String(r.id):"";
 
-      const ts = r.timestamp ? String(r.timestamp) : "";
-      const ean = r.ean ? String(r.ean) : "";
-      const size = r.size ? String(r.size) : "";
-      const status = r.status ? String(r.status) : "";
-      const id = r.id ? String(r.id) : "";
-
-      tr.innerHTML = `
+      tr.innerHTML=`
         <td>${ts}</td>
         <td class="mono">${ean}</td>
         <td>${size}</td>
         <td>${status}</td>
-        <td>
-          <div class="rowActions">
-            <button class="small" data-id="${id}" ${status !== "NEW" ? "disabled" : ""}>${t("done")}</button>
-          </div>
-        </td>
+        <td>${note}</td>
+        <td><button class="small" data-id="${id}" ${status!=="NEW"?"disabled":""}>${t("done")}</button></td>
       `;
 
-      const btn = tr.querySelector("button[data-id]");
-      btn.addEventListener("click", async () => {
-        btn.disabled = true;
-        await markDone(id);
+      const btn=tr.querySelector("button[data-id]");
+      btn.addEventListener("click", async ()=>{
+        btn.disabled=true;
+        await apiPost({ action:"queue_done", token, id });
         await loadQueue();
       });
 
@@ -171,32 +233,24 @@
     }
   }
 
-  async function markDone(id){
-    try{
-      const payload = { action: "done", id };
-      await fetch(WEBAPP_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      });
-    } catch(e){
-      // ignore
-    }
-  }
-
+  $("btnLogin").addEventListener("click", login);
+  $("loginPin").addEventListener("keydown",(e)=>{ if(e.key==="Enter") login(); });
+  $("btnLogout").addEventListener("click", logout);
   $("btnReload").addEventListener("click", loadQueue);
   $("onlyNew").addEventListener("change", loadQueue);
 
-  $("langSelect").value = lang;
-  $("langSelect").addEventListener("change", (ev) => {
-    lang = ev.target.value;
+  $("langSelect").value=lang;
+  $("langSelect").addEventListener("change",(ev)=>{
+    lang=ev.target.value;
     localStorage.setItem("office_lang", lang);
     applyLang();
     loadQueue();
   });
 
   applyLang();
-  loadQueue();
+  if(token){ setLoginUI(true); loadQueue(); }
+  else setLoginUI(false);
+
   setInterval(loadQueue, 5000);
 })();
 </script>
