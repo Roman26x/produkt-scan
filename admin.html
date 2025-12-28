@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Admin – Mitarbeiter</title>
+<style>
+  :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  body{margin:16px;background:#f6f7f8;color:#111}
+  .card{max-width:980px;margin:auto;background:#fff;border-radius:14px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  h2{margin:0;font-size:18px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  input,select{padding:10px;border:1px solid #ddd;border-radius:10px}
+  button{padding:10px 12px;border:0;border-radius:10px;background:#111;color:#fff;cursor:pointer}
+  button.secondary{background:#444}
+  button.small{padding:6px 10px;border-radius:999px;font-size:12px}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
+  th{background:#fafafa}
+  .pill{font-size:12px;padding:6px 10px;border-radius:999px;background:#f0f0f0;border:1px solid #e5e5e5}
+  .hint{font-size:12px;color:#666;margin-top:6px}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="top">
+    <div>
+      <h2 id="title">Admin – Mitarbeiterverwaltung</h2>
+      <div class="hint" id="sub">User anlegen / deaktivieren / PIN zurücksetzen.</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <span class="pill" id="userPill">—</span>
+      <select id="langSelect" class="pill" style="padding:8px 10px;">
+        <option value="de">Deutsch</option>
+        <option value="ru">Русский</option>
+      </select>
+      <button id="btnReload" class="secondary">Neu laden</button>
+      <button id="btnLogout" class="secondary">Logout</button>
+    </div>
+  </div>
+
+  <div id="loginBox">
+    <div class="row">
+      <input id="loginUser" placeholder="Benutzername" value="admin" />
+      <input id="loginPin" placeholder="PIN" type="password" inputmode="numeric" />
+      <button id="btnLogin">Login</button>
+    </div>
+    <div class="hint" id="loginHint">Admin-Login. (Standard user: admin)</div>
+  </div>
+
+  <div id="appBox" class="hidden">
+    <div class="row">
+      <input id="newUser" placeholder="Neuer Benutzername" />
+      <select id="newRole">
+        <option value="staff">staff</option>
+        <option value="office">office</option>
+        <option value="admin">admin</option>
+      </select>
+      <input id="newPin" placeholder="PIN (min 4 Ziffern)" type="password" inputmode="numeric" />
+      <button id="btnAdd">User anlegen</button>
+    </div>
+    <div class="hint" id="note">PIN wird sicher gespeichert (Hash). Du kannst PINs zurücksetzen, aber nicht im Klartext anzeigen.</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>username</th>
+          <th>role</th>
+          <th>active</th>
+          <th>last_login</th>
+          <th id="thAction">Aktion</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(() => {
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx9SEn2wy7NRI2aRxwq4b7vYNqqe4nYIWGTVIJKjvk4R3ixo4i5f1EuKJYfduZDc2HS/exec";
+  const $ = (id)=>document.getElementById(id);
+
+  const I18N = {
+    de:{
+      title:"Admin – Mitarbeiterverwaltung",
+      sub:"User anlegen / deaktivieren / PIN zurücksetzen.",
+      login:"Login",
+      logout:"Logout",
+      reload:"Neu laden",
+      loginHint:"Admin-Login. (Standard user: admin)",
+      badCred:"Falscher Benutzername oder PIN.",
+      disabled:"Account ist deaktiviert.",
+      add:"User anlegen",
+      pinReset:"PIN setzen",
+      deactivate:"Deaktivieren",
+      activate:"Aktivieren",
+      action:"Aktion",
+      note:"PIN wird sicher gespeichert (Hash). Du kannst PINs zurücksetzen, aber nicht im Klartext anzeigen."
+    },
+    ru:{
+      title:"Админ — сотрудники",
+      sub:"Создать пользователя / отключить / сброс PIN.",
+      login:"Войти",
+      logout:"Выйти",
+      reload:"Обновить",
+      loginHint:"Вход администратора. (по умолчанию user: admin)",
+      badCred:"Неверное имя пользователя или PIN.",
+      disabled:"Аккаунт отключен.",
+      add:"Создать",
+      pinReset:"Задать PIN",
+      deactivate:"Отключить",
+      activate:"Включить",
+      action:"Действие",
+      note:"PIN хранится безопасно (хэш). Можно сбросить PIN, но нельзя посмотреть его в открытую."
+    }
+  };
+
+  let lang = localStorage.getItem("admin_lang") || "de";
+  let token = localStorage.getItem("token_admin") || "";
+  let username = localStorage.getItem("user_admin") || "";
+  let role = localStorage.getItem("role_admin") || "";
+
+  function t(k){ return (I18N[lang]||I18N.de)[k] || k; }
+
+  function applyLang(){
+    $("title").textContent=t("title");
+    $("sub").textContent=t("sub");
+    $("btnLogin").textContent=t("login");
+    $("btnLogout").textContent=t("logout");
+    $("btnReload").textContent=t("reload");
+    $("loginHint").textContent=t("loginHint");
+    $("btnAdd").textContent=t("add");
+    $("thAction").textContent=t("action");
+    $("note").textContent=t("note");
+  }
+
+  async function post(payload){
+    const res = await fetch(WEBAPP_URL, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+    return await res.json();
+  }
+
+  async function get(url){
+    const res = await fetch(url);
+    return await res.json();
+  }
+
+  function setLoginUI(logged){
+    $("loginBox").classList.toggle("hidden", logged);
+    $("appBox").classList.toggle("hidden", !logged);
+    $("userPill").textContent = logged ? `${username} (${role})` : "—";
+  }
+
+  async function login(){
+    const u=String($("loginUser").value||"").trim();
+    const p=String($("loginPin").value||"").replace(/\D/g,"");
+    const data = await post({ action:"auth_login", username:u, pin:p });
+    if(data && data.ok){
+      token=data.token; username=data.user.username; role=data.user.role;
+      localStorage.setItem("token_admin", token);
+      localStorage.setItem("user_admin", username);
+      localStorage.setItem("role_admin", role);
+      setLoginUI(true);
+      await reload();
+      return;
+    }
+    if(data && data.error==="USER_DISABLED") alert(t("disabled"));
+    else alert(t("badCred"));
+  }
+
+  function logout(){
+    token=""; username=""; role="";
+    localStorage.removeItem("token_admin");
+    localStorage.removeItem("user_admin");
+    localStorage.removeItem("role_admin");
+    setLoginUI(false);
+  }
+
+  async function reload(){
+    if(!token) return;
+    const url = WEBAPP_URL + "?action=users_list&token=" + encodeURIComponent(token) + "&_=" + Date.now();
+    const data = await get(url);
+    const users = (data && data.users) ? data.users : [];
+
+    const tb = $("tbody");
+    tb.innerHTML = "";
+
+    for(const u of users){
+      const tr=document.createElement("tr");
+      tr.innerHTML = `
+        <td>${u.username}</td>
+        <td>${u.role}</td>
+        <td>${u.active ? "1" : "0"}</td>
+        <td>${u.last_login || ""}</td>
+        <td>
+          <button class="small" data-act="toggle" data-user="${u.username}" data-active="${u.active ? "1":"0"}">${u.active ? t("deactivate") : t("activate")}</button>
+          <button class="small" data-act="pin" data-user="${u.username}">${t("pinReset")}</button>
+        </td>
+      `;
+      tr.querySelectorAll("button").forEach(btn=>{
+        btn.addEventListener("click", async ()=>{
+          const act=btn.dataset.act;
+          const user=btn.dataset.user;
+
+          if(act==="toggle"){
+            const cur=btn.dataset.active==="1";
+            await post({ action:"users_set_active", token, username:user, active: cur ? "0":"1" });
+            await reload();
+          }
+
+          if(act==="pin"){
+            const newPin = prompt("Neuer PIN (mind. 4 Ziffern):");
+            if(!newPin) return;
+            const p = String(newPin).replace(/\D/g,"");
+            if(p.length < 4){ alert("PIN zu kurz"); return; }
+            await post({ action:"users_reset_pin", token, username:user, pin:p });
+            await reload();
+          }
+        });
+      });
+
+      tb.appendChild(tr);
+    }
+  }
+
+  async function addUser(){
+    const u=String($("newUser").value||"").trim();
+    const r=String($("newRole").value||"").trim();
+    const p=String($("newPin").value||"").replace(/\D/g,"");
+
+    if(!u || p.length<4) return alert("Bitte Username + PIN (min 4) angeben.");
+    const data = await post({ action:"users_add", token, username:u, role:r, pin:p });
+    if(!data || !data.ok) return alert("Fehler: " + (data?.error || ""));
+    $("newUser").value=""; $("newPin").value="";
+    await reload();
+  }
+
+  $("btnLogin").addEventListener("click", login);
+  $("btnLogout").addEventListener("click", logout);
+  $("btnReload").addEventListener("click", reload);
+  $("btnAdd").addEventListener("click", addUser);
+
+  $("langSelect").value=lang;
+  $("langSelect").addEventListener("change",(ev)=>{
+    lang=ev.target.value;
+    localStorage.setItem("admin_lang", lang);
+    applyLang();
+    reload();
+  });
+
+  applyLang();
+  if(token){ setLoginUI(true); reload(); } else setLoginUI(false);
+})();
+</script>
+</body>
+</html>
