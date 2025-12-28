@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Produkt-Suche (CSV + EAN-Scan)</title>
+  <title>Produkt-Scan</title>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js"></script>
@@ -12,10 +12,10 @@
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
     body { margin: 0; padding: 16px; background: #f6f7f8; color: #111; }
     .card { max-width: 820px; margin: 0 auto; background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
-    .topbar { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
     h1 { font-size: 18px; margin: 0; }
     .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
-    input[type="file"], input[type="text"], select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: #fff; }
+    input[type="file"], input[type="text"], input[type="password"], select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: #fff; }
     button { padding: 12px 14px; border: 0; border-radius: 10px; background: #111; color: #fff; cursor: pointer; }
     button.secondary { background: #444; }
     button:disabled { opacity: .5; cursor: not-allowed; }
@@ -25,28 +25,29 @@
     .ok { border-color: #bfe8c9; background: #f0fbf3; }
     .bad { border-color: #f0b8b8; background: #fff1f1; }
     .kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 10px; font-size: 14px; }
-    .kv div { padding: 2px 0; }
     .label { color: #555; }
     .videoWrap { margin-top: 12px; display: none; }
     video { width: 100%; border-radius: 12px; background: #000; }
-    .small { font-size: 12px; color: #666; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .pill { font-size:12px; padding:6px 10px; border-radius:999px; background:#f0f0f0; border:1px solid #e5e5e5; }
     .right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
     .toggle { display:flex; align-items:center; gap:8px; }
+    .divider{height:1px;background:#eee;margin:14px 0;}
+    .hidden{display:none;}
   </style>
 </head>
 
 <body>
   <div class="card">
     <div class="topbar">
-      <h1 id="title">Produkt-Suche (CSV + EAN Scan)</h1>
+      <h1 id="title">Produkt-Suche</h1>
       <div class="right">
+        <span class="pill" id="userPill">—</span>
         <span class="pill" id="dbStatus">DB: –</span>
 
         <label class="pill toggle" title="Sound an/aus">
           <input type="checkbox" id="soundToggle" checked />
-          <span id="soundLbl">🔊</span>
+          <span>🔊</span>
         </label>
 
         <select id="langSelect" style="width:auto; min-width:140px;">
@@ -56,411 +57,460 @@
       </div>
     </div>
 
-    <div class="row">
-      <div style="flex: 1 1 360px;">
-        <input id="csvFile" type="file" accept=".csv,text/csv" />
-        <div class="hint" id="csvHint">CSV muss Spalten haben: <span class="mono">Artikel</span>, <span class="mono">VK-Preis</span>, <span class="mono">EAN</span></div>
+    <!-- LOGIN -->
+    <div id="loginBox">
+      <div class="row">
+        <div style="flex: 1 1 220px;">
+          <input id="loginUser" type="text" placeholder="Benutzername" autocomplete="username" />
+        </div>
+        <div style="flex: 1 1 220px;">
+          <input id="loginPin" type="password" placeholder="PIN" inputmode="numeric" autocomplete="current-password" />
+        </div>
+        <button id="btnLogin">Login</button>
       </div>
+      <div class="hint" id="loginHint">Melde dich mit Benutzername + PIN an.</div>
+      <div class="divider"></div>
     </div>
 
-    <div class="row">
-      <div style="flex: 1 1 360px;">
-        <input id="searchInput" type="text" placeholder="Suchen nach Produktname oder EAN …" disabled />
-        <div class="hint" id="searchHint">Tipp: Du kannst auch nur einen Teil tippen (z. B. „milch“ oder „400123“).</div>
-      </div>
-
-      <button id="btnScan" disabled>📷 EAN scannen</button>
-      <button id="btnStop" class="secondary" disabled>⏹ Stop</button>
-    </div>
-
-    <div class="row">
-      <div style="flex: 1 1 220px;">
-        <select id="sizeSelect" disabled>
-          <!-- Größen aus deinem Etikettenprogramm -->
-          <option value="80x39">80×39</option>
-          <option value="50x25">50×25</option>
-          <option value="35x70">35×70</option>
-        </select>
-        <div class="hint" id="sizeHint">Etikettgröße wählen</div>
+    <!-- APP -->
+    <div id="appBox" class="hidden">
+      <div class="row">
+        <div style="flex: 1 1 360px;">
+          <input id="csvFile" type="file" accept=".csv,text/csv" />
+          <div class="hint" id="csvHint">CSV muss Spalten haben: Artikel, VK-Preis, EAN</div>
+        </div>
       </div>
 
-      <button id="btnSendOffice" disabled>🏷️ Etikett ans Büro senden</button>
-    </div>
+      <div class="row">
+        <div style="flex: 1 1 360px;">
+          <input id="searchInput" type="text" placeholder="Suchen nach Produktname oder EAN …" disabled />
+          <div class="hint" id="searchHint">Tipp: Du kannst auch nur einen Teil tippen.</div>
+        </div>
 
-    <div class="videoWrap" id="videoWrap">
-      <div class="hint" id="scanHint">Kamera läuft – halte den Barcode ruhig ins Bild.</div>
-      <video id="video" playsinline></video>
-      <div class="small" id="scanTip">Wenn es nicht scannt: mehr Licht, näher ran, ruhiger halten.</div>
-    </div>
+        <button id="btnScan" disabled>📷 EAN scannen</button>
+        <button id="btnStop" class="secondary" disabled>⏹ Stop</button>
+        <button id="btnLogout" class="secondary">Logout</button>
+      </div>
 
-    <div class="result" id="resultBox">
-      <div class="status" id="statusEmoji">📦</div>
-      <div id="resultText" class="hint">Bitte CSV laden …</div>
+      <div class="row">
+        <div style="flex: 1 1 260px;">
+          <select id="sizeSelect" disabled>
+            <option value="80x39" data-de="Regaletikett" data-ru="Полочная этикетка">Regaletikett</option>
+            <option value="50x25" data-de="Kleinetikett" data-ru="Маленькая этикетка">Kleinetikett</option>
+            <option value="35x70" data-de="Kühlwaren Etikett" data-ru="Этикетка для холодильника">Kühlwaren Etikett</option>
+          </select>
+          <div class="hint" id="sizeHint">Etikettart wählen</div>
+        </div>
+
+        <button id="btnSendOffice" disabled>🏷️ Etikett ans Büro senden</button>
+      </div>
+
+      <div class="videoWrap" id="videoWrap">
+        <div class="hint" id="scanHint">Kamera läuft – halte den Barcode ruhig ins Bild.</div>
+        <video id="video" playsinline></video>
+        <div class="hint" id="scanTip">Wenn es nicht scannt: mehr Licht, näher ran, ruhiger halten.</div>
+      </div>
+
+      <div class="result" id="resultBox">
+        <div class="status" id="statusEmoji">📦</div>
+        <div id="resultText" class="hint">Bitte CSV laden …</div>
+      </div>
     </div>
   </div>
 
 <script>
 (() => {
-  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycby5tP2hon2uEv9KJEAy5zcnXVZSJj63yuYduI0UdKiJPaZAfhkID_pZSZrFyxWMNXka/exec";
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx9SEn2wy7NRI2aRxwq4b7vYNqqe4nYIWGTVIJKjvk4R3ixo4i5f1EuKJYfduZDc2HS/exec";
 
   const I18N = {
     de: {
-      title: "Produkt-Suche (CSV + EAN Scan)",
-      csvHint: "CSV muss Spalten haben: Artikel, VK-Preis, EAN",
-      searchPh: "Suchen nach Produktname oder EAN …",
-      searchHint: "Tipp: Du kannst auch nur einen Teil tippen (z. B. „milch“ oder „400123“).",
-      scanBtn: "📷 EAN scannen",
-      stopBtn: "⏹ Stop",
-      sizeHint: "Etikettgröße wählen",
-      sendBtn: "🏷️ Etikett ans Büro senden",
-      scanHint: "Kamera läuft – halte den Barcode ruhig ins Bild.",
-      scanTip: "Wenn es nicht scannt: mehr Licht, näher ran, ruhiger halten.",
-      loadingCsv: "CSV wird geladen …",
-      loadedCsv: (n) => `CSV geladen: ${n} Zeilen. Jetzt suchen oder scannen.`,
-      notLoaded: "Bitte CSV laden …",
-      sentOk: "Gesendet ✅",
-      sentFail: "Fehler beim Senden ❌",
-      noFound: "Kein Produkt gefunden.",
-      db: (n) => `DB: ${n}`
+      title:"Produkt-Suche",
+      loginUser:"Benutzername",
+      loginPin:"PIN",
+      loginBtn:"Login",
+      loginHint:"Melde dich mit Benutzername + PIN an.",
+      badCred:"Falscher Benutzername oder PIN.",
+      userDisabled:"Account ist deaktiviert.",
+      csvHint:"CSV muss Spalten haben: Artikel, VK-Preis, EAN",
+      searchPh:"Suchen nach Produktname oder EAN …",
+      searchHint:"Tipp: Du kannst auch nur einen Teil tippen.",
+      scanBtn:"📷 EAN scannen",
+      stopBtn:"⏹ Stop",
+      logoutBtn:"Logout",
+      sizeHint:"Etikettart wählen",
+      sendBtn:"🏷️ Etikett ans Büro senden",
+      scanHint:"Kamera läuft – halte den Barcode ruhig ins Bild.",
+      scanTip:"Wenn es nicht scannt: mehr Licht, näher ran, ruhiger halten.",
+      loadingCsv:"CSV wird geladen …",
+      loadedCsv:(n)=>`CSV geladen: ${n} Zeilen. Jetzt suchen oder scannen.`,
+      notLoaded:"Bitte CSV laden …",
+      sentOk:"Gesendet ✅",
+      sentFail:"Fehler beim Senden ❌",
+      noFound:"Kein Produkt gefunden.",
+      db:(n)=>`DB: ${n}`,
+      needLogin:"Bitte zuerst einloggen."
     },
     ru: {
-      title: "Поиск товара (CSV + скан EAN)",
-      csvHint: "CSV должен иметь колонки: Artikel, VK-Preis, EAN",
-      searchPh: "Поиск по названию или EAN …",
-      searchHint: "Совет: можно вводить часть слова или часть EAN.",
-      scanBtn: "📷 Сканировать EAN",
-      stopBtn: "⏹ Стоп",
-      sizeHint: "Выберите размер этикетки",
-      sendBtn: "🏷️ Отправить в офис",
-      scanHint: "Камера включена — держите штрих-код ровно в кадре.",
-      scanTip: "Если не сканирует: больше света, ближе, держите ровнее.",
-      loadingCsv: "Загрузка CSV …",
-      loadedCsv: (n) => `CSV загружен: строк ${n}. Можно искать или сканировать.`,
-      notLoaded: "Пожалуйста, загрузите CSV …",
-      sentOk: "Отправлено ✅",
-      sentFail: "Ошибка отправки ❌",
-      noFound: "Товар не найден.",
-      db: (n) => `БД: ${n}`
+      title:"Поиск товара",
+      loginUser:"Имя пользователя",
+      loginPin:"PIN",
+      loginBtn:"Войти",
+      loginHint:"Войдите по имени пользователя и PIN.",
+      badCred:"Неверное имя пользователя или PIN.",
+      userDisabled:"Аккаунт отключен.",
+      csvHint:"CSV должен иметь колонки: Artikel, VK-Preis, EAN",
+      searchPh:"Поиск по названию или EAN …",
+      searchHint:"Совет: можно вводить часть слова.",
+      scanBtn:"📷 Сканировать EAN",
+      stopBtn:"⏹ Стоп",
+      logoutBtn:"Выйти",
+      sizeHint:"Выберите тип этикетки",
+      sendBtn:"🏷️ Отправить в офис",
+      scanHint:"Камера включена — держите штрих-код ровно в кадре.",
+      scanTip:"Если не сканирует: больше света, ближе, держите ровнее.",
+      loadingCsv:"Загрузка CSV …",
+      loadedCsv:(n)=>`CSV загружен: строк ${n}. Можно искать или сканировать.`,
+      notLoaded:"Пожалуйста, загрузите CSV …",
+      sentOk:"Отправлено ✅",
+      sentFail:"Ошибка отправки ❌",
+      noFound:"Товар не найден.",
+      db:(n)=>`БД: ${n}`,
+      needLogin:"Сначала войдите."
     }
   };
 
   let lang = localStorage.getItem("lang") || "de";
+  let token = localStorage.getItem("token_staff") || "";
+  let userRole = localStorage.getItem("role_staff") || "";
+  let username = localStorage.getItem("user_staff") || "";
+
   let rows = [];
   let indexByEAN = new Map();
   let scanner = null;
   let scanning = false;
   let lastFound = null;
 
-  const $ = (id) => document.getElementById(id);
-  const digitsOnly = (s) => String(s ?? "").replace(/\D/g, "");
+  const $ = (id)=>document.getElementById(id);
+  const digitsOnly = (s)=>String(s??"").replace(/\D/g,"");
 
-  /** -------- Sound Engine (no files needed) -------- */
-  let audioCtx = null;
-  function soundEnabled() { return $("soundToggle")?.checked; }
-
-  async function ensureAudio() {
-    if (!soundEnabled()) return null;
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") {
-      try { await audioCtx.resume(); } catch {}
-    }
+  // --- Sound (no files)
+  let audioCtx=null;
+  function soundEnabled(){return $("soundToggle")?.checked;}
+  async function ensureAudio(){
+    if(!soundEnabled()) return null;
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==="suspended"){ try{await audioCtx.resume();}catch{} }
     return audioCtx;
   }
-
-  function beep(freq = 880, ms = 120, type = "sine", gainVal = 0.08) {
-    if (!soundEnabled()) return;
-    ensureAudio().then((ctx) => {
-      if (!ctx) return;
-      const t0 = ctx.currentTime;
-
-      const osc = ctx.createOscillator();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, t0);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.exponentialRampToValueAtTime(gainVal, t0 + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + ms / 1000);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(t0);
-      osc.stop(t0 + ms / 1000 + 0.02);
+  function beep(freq=880,ms=120,type="sine",gainVal=0.08){
+    if(!soundEnabled()) return;
+    ensureAudio().then((ctx)=>{
+      if(!ctx) return;
+      const t0=ctx.currentTime;
+      const osc=ctx.createOscillator(); osc.type=type; osc.frequency.setValueAtTime(freq,t0);
+      const gain=ctx.createGain();
+      gain.gain.setValueAtTime(0.0001,t0);
+      gain.gain.exponentialRampToValueAtTime(gainVal,t0+0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001,t0+ms/1000);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t0); osc.stop(t0+ms/1000+0.02);
     });
   }
+  function successSound(){beep(880,110,"sine",0.09); setTimeout(()=>beep(1320,90,"sine",0.07),120);}
+  function errorSound(){beep(220,160,"square",0.06); setTimeout(()=>beep(180,160,"square",0.05),170);}
+  function sendSound(){beep(660,90,"triangle",0.07); setTimeout(()=>beep(990,70,"triangle",0.06),100);}
+  function vibrate(p=[40,20,40]){try{navigator.vibrate&&navigator.vibrate(p);}catch{}}
 
-  function successSound() { beep(880, 110, "sine", 0.09); setTimeout(() => beep(1320, 90, "sine", 0.07), 120); }
-  function errorSound()   { beep(220, 160, "square", 0.06); setTimeout(() => beep(180, 160, "square", 0.05), 170); }
-  function sendSound()    { beep(660, 90, "triangle", 0.07); setTimeout(() => beep(990, 70, "triangle", 0.06), 100); }
-
-  function vibrate(pattern = [40, 20, 40]) {
-    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch {}
-  }
-
-  // Persist sound setting
   $("soundToggle").checked = (localStorage.getItem("sound") ?? "1") === "1";
-  $("soundToggle").addEventListener("change", () => {
+  $("soundToggle").addEventListener("change", ()=>{
     localStorage.setItem("sound", $("soundToggle").checked ? "1" : "0");
-    // touch audio context (some browsers need it)
-    if ($("soundToggle").checked) ensureAudio();
+    if($("soundToggle").checked) ensureAudio();
   });
 
-  /** -------- i18n helpers -------- */
-  function t(key, arg) {
-    const dict = I18N[lang] || I18N.de;
-    const val = dict[key];
-    return (typeof val === "function") ? val(arg) : val;
+  function t(key,arg){
+    const d = I18N[lang] || I18N.de;
+    const v = d[key];
+    return (typeof v==="function") ? v(arg) : v;
   }
 
-  function applyLang() {
+  function applySizeLabels(){
+    const sel=$("sizeSelect");
+    for(const opt of sel.querySelectorAll("option")){
+      const de=opt.getAttribute("data-de")||opt.textContent;
+      const ru=opt.getAttribute("data-ru")||opt.textContent;
+      opt.textContent = (lang==="ru") ? ru : de;
+    }
+  }
+
+  function applyLang(){
     $("title").textContent = t("title");
+    $("loginUser").placeholder = t("loginUser");
+    $("loginPin").placeholder  = t("loginPin");
+    $("btnLogin").textContent  = t("loginBtn");
+    $("loginHint").textContent = t("loginHint");
+
     $("csvHint").textContent = t("csvHint");
     $("searchInput").placeholder = t("searchPh");
     $("searchHint").textContent = t("searchHint");
     $("btnScan").textContent = t("scanBtn");
     $("btnStop").textContent = t("stopBtn");
+    $("btnLogout").textContent = t("logoutBtn");
     $("sizeHint").textContent = t("sizeHint");
     $("btnSendOffice").textContent = t("sendBtn");
     $("scanHint").textContent = t("scanHint");
     $("scanTip").textContent = t("scanTip");
     $("dbStatus").textContent = t("db", rows.length || "–");
-    if (!rows.length) $("resultText").textContent = t("notLoaded");
+    applySizeLabels();
   }
 
-  function normalizeRow(r) {
-    const artikel = (r["Artikel"] ?? r["artikel"] ?? r["Product"] ?? r["Produkt"] ?? "").toString().trim();
-    const preis   = (r["VK-Preis"] ?? r["VK Preis"] ?? r["Preis"] ?? r["price"] ?? "").toString().trim();
-    const eanRaw  = (r["EAN"] ?? r["ean"] ?? r["Barcode"] ?? "").toString().trim();
-    const ean     = digitsOnly(eanRaw);
-    return { artikel, preis, ean };
+  function setLoginUI(loggedIn){
+    $("loginBox").classList.toggle("hidden", loggedIn);
+    $("appBox").classList.toggle("hidden", !loggedIn);
+    $("userPill").textContent = loggedIn ? `${username} (${userRole})` : "—";
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (m) => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-    }[m]));
+  async function apiPost(payload){
+    const res = await fetch(WEBAPP_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
   }
 
-  function setNotLoaded() {
-    $("resultBox").classList.remove("ok", "bad");
-    $("statusEmoji").textContent = "📦";
-    $("resultText").textContent = t("notLoaded");
-    lastFound = null;
-    $("btnSendOffice").disabled = true;
-    $("sizeSelect").disabled = true;
-  }
+  async function login(){
+    await ensureAudio();
+    const u = String($("loginUser").value||"").trim();
+    const p = digitsOnly($("loginPin").value||"");
+    if(!u || p.length < 4){ errorSound(); return; }
 
-  function setFound(row, playSound = true) {
-    $("resultBox").classList.remove("bad");
-    $("resultBox").classList.add("ok");
-    $("statusEmoji").textContent = "✅";
+    const data = await apiPost({ action:"auth_login", username:u, pin:p });
+    if(data && data.ok){
+      token = data.token;
+      username = data.user.username;
+      userRole = data.user.role;
 
-    lastFound = row;
-    $("btnSendOffice").disabled = false;
-    $("sizeSelect").disabled = false;
+      localStorage.setItem("token_staff", token);
+      localStorage.setItem("user_staff", username);
+      localStorage.setItem("role_staff", userRole);
 
-    const priceText = row.preis ? row.preis : "-";
-    $("resultText").innerHTML = `
-      <div class="kv">
-        <div class="label">${lang === "ru" ? "Товар:" : "Produkt:"}</div><div><strong>${escapeHtml(row.artikel || "-")}</strong></div>
-        <div class="label">${lang === "ru" ? "Цена:" : "Preis:"}</div><div>${escapeHtml(priceText)}</div>
-        <div class="label">EAN:</div><div class="mono">${escapeHtml(row.ean || "-")}</div>
-      </div>
-    `;
-
-    if (playSound) { successSound(); vibrate([30]); }
-  }
-
-  function setNotFound(playSound = true) {
-    $("resultBox").classList.remove("ok");
-    $("resultBox").classList.add("bad");
-    $("statusEmoji").textContent = "❌";
-    $("resultText").innerHTML = `
-      <div><strong>Produkt nicht gefunden</strong></div>
-      <div><strong>Товар не найден</strong></div>
-    `;
-    lastFound = null;
-    $("btnSendOffice").disabled = true;
-    $("sizeSelect").disabled = true;
-
-    if (playSound) { errorSound(); vibrate([60, 30, 60]); }
-  }
-
-  function lookup(query, playSound = true) {
-    const q = String(query ?? "").trim();
-    if (!q) { setNotFound(false); return; }
-
-    const qDigits = digitsOnly(q);
-    if (qDigits.length >= 6) {
-      const hit = indexByEAN.get(qDigits);
-      if (hit) return setFound(hit, playSound);
-      const hit2 = rows.find(r => r.ean && r.ean.includes(qDigits));
-      if (hit2) return setFound(hit2, playSound);
-      return setNotFound(playSound);
+      setLoginUI(true);
+      successSound(); vibrate([30]);
+      return;
     }
 
-    const qLower = q.toLowerCase();
-    const hit = rows.find(r => (r.artikel || "").toLowerCase().includes(qLower));
-    if (hit) return setFound(hit, playSound);
+    if(data && data.error === "USER_DISABLED") alert(t("userDisabled"));
+    else alert(t("badCred"));
+    errorSound();
+  }
 
+  function logout(){
+    token=""; username=""; userRole="";
+    localStorage.removeItem("token_staff");
+    localStorage.removeItem("user_staff");
+    localStorage.removeItem("role_staff");
+    rows=[]; indexByEAN=new Map(); lastFound=null;
+    $("searchInput").value="";
+    $("resultText").textContent = t("needLogin");
+    $("statusEmoji").textContent="🔒";
+    setLoginUI(false);
+  }
+
+  $("btnLogin").addEventListener("click", login);
+  $("loginPin").addEventListener("keydown", (e)=>{ if(e.key==="Enter") login(); });
+  $("btnLogout").addEventListener("click", logout);
+
+  // --- CSV + Lookup
+  function normalizeRow(r){
+    const artikel=(r["Artikel"]??r["artikel"]??r["Product"]??r["Produkt"]??"").toString().trim();
+    const preis=(r["VK-Preis"]??r["VK Preis"]??r["Preis"]??r["price"]??"").toString().trim();
+    const eanRaw=(r["EAN"]??r["ean"]??r["Barcode"]??"").toString().trim();
+    const ean=digitsOnly(eanRaw);
+    return {artikel,preis,ean};
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g,(m)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+  }
+
+  function setNotLoaded(){
+    $("resultBox").classList.remove("ok","bad");
+    $("statusEmoji").textContent = token ? "📦" : "🔒";
+    $("resultText").textContent = token ? t("notLoaded") : t("needLogin");
+    $("btnSendOffice").disabled = true;
+    $("sizeSelect").disabled = true;
+    lastFound=null;
+  }
+  function setFound(row, playSound=true){
+    $("resultBox").classList.remove("bad"); $("resultBox").classList.add("ok");
+    $("statusEmoji").textContent="✅";
+    lastFound=row;
+    $("btnSendOffice").disabled=false;
+    $("sizeSelect").disabled=false;
+
+    const priceText=row.preis?row.preis:"-";
+    $("resultText").innerHTML = `
+      <div class="kv">
+        <div class="label">${lang==="ru"?"Товар:":"Produkt:"}</div><div><strong>${escapeHtml(row.artikel||"-")}</strong></div>
+        <div class="label">${lang==="ru"?"Цена:":"Preis:"}</div><div>${escapeHtml(priceText)}</div>
+        <div class="label">EAN:</div><div class="mono">${escapeHtml(row.ean||"-")}</div>
+      </div>`;
+    if(playSound){ successSound(); vibrate([30]); }
+  }
+  function setNotFound(playSound=true){
+    $("resultBox").classList.remove("ok"); $("resultBox").classList.add("bad");
+    $("statusEmoji").textContent="❌";
+    $("resultText").innerHTML = `<div><strong>Produkt nicht gefunden</strong></div><div><strong>Товар не найден</strong></div>`;
+    lastFound=null;
+    $("btnSendOffice").disabled=true;
+    $("sizeSelect").disabled=true;
+    if(playSound){ errorSound(); vibrate([60,30,60]); }
+  }
+
+  function lookup(q, playSound=true){
+    const s=String(q||"").trim();
+    if(!s){ setNotFound(false); return; }
+    const d=digitsOnly(s);
+    if(d.length>=6){
+      const hit=indexByEAN.get(d);
+      if(hit) return setFound(hit, playSound);
+      const hit2 = rows.find(r=>r.ean && r.ean.includes(d));
+      if(hit2) return setFound(hit2, playSound);
+      return setNotFound(playSound);
+    }
+    const ql=s.toLowerCase();
+    const hit=rows.find(r=>(r.artikel||"").toLowerCase().includes(ql));
+    if(hit) return setFound(hit, playSound);
     return setNotFound(playSound);
   }
 
-  /** -------- CSV Load -------- */
-  $("csvFile").addEventListener("change", (ev) => {
+  $("csvFile").addEventListener("change", (ev)=>{
+    if(!token){ alert(t("needLogin")); return; }
     const file = ev.target.files?.[0];
-    if (!file) { setNotLoaded(); return; }
+    if(!file){ setNotLoaded(); return; }
 
     setNotLoaded();
     $("resultText").textContent = t("loadingCsv");
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (res) => {
-        const raw = res.data || [];
-        const normalized = raw.map(normalizeRow).filter(r => r.artikel || r.ean);
+    Papa.parse(file,{
+      header:true, skipEmptyLines:true,
+      complete:(res)=>{
+        const raw=res.data||[];
+        rows = raw.map(normalizeRow).filter(r=>r.artikel||r.ean);
+        indexByEAN=new Map();
+        for(const r of rows) if(r.ean) indexByEAN.set(r.ean,r);
 
-        rows = normalized;
-        indexByEAN = new Map();
-        for (const r of rows) if (r.ean) indexByEAN.set(r.ean, r);
+        $("searchInput").disabled=false;
+        $("btnScan").disabled=false;
+        $("sizeSelect").disabled=false;
 
-        $("searchInput").disabled = false;
-        $("btnScan").disabled = false;
-
-        $("resultBox").classList.remove("ok", "bad");
-        $("statusEmoji").textContent = "✅";
+        $("resultBox").classList.remove("ok","bad");
+        $("statusEmoji").textContent="✅";
         $("resultText").textContent = t("loadedCsv", rows.length);
         $("dbStatus").textContent = t("db", rows.length);
 
-        $("sizeSelect").disabled = false;
-        $("btnSendOffice").disabled = true;
-        lastFound = null;
-
-        // small confirmation sound
-        beep(520, 70, "sine", 0.05);
+        beep(520,70,"sine",0.05);
       },
-      error: () => {
+      error:()=>{
         $("resultBox").classList.add("bad");
-        $("statusEmoji").textContent = "❌";
-        $("resultText").textContent = (lang === "ru") ? "Ошибка чтения CSV." : "CSV konnte nicht gelesen werden.";
+        $("statusEmoji").textContent="❌";
+        $("resultText").textContent = (lang==="ru")?"Ошибка чтения CSV.":"CSV konnte nicht gelesen werden.";
         errorSound();
       }
     });
   });
 
-  $("searchInput").addEventListener("input", (ev) => lookup(ev.target.value, true));
+  $("searchInput").addEventListener("input",(ev)=>lookup(ev.target.value,true));
 
-  /** -------- Scanner -------- */
-  async function startScan() {
-    if (scanning || !rows.length) return;
-
-    // wake up audio context on user gesture
+  // --- Scanner
+  async function startScan(){
+    if(!token){ alert(t("needLogin")); return; }
+    if(scanning || !rows.length) return;
     await ensureAudio();
 
-    $("videoWrap").style.display = "block";
-    $("btnScan").disabled = true;
-    $("btnStop").disabled = false;
-    $("searchInput").disabled = true;
+    $("videoWrap").style.display="block";
+    $("btnScan").disabled=true;
+    $("btnStop").disabled=false;
+    $("searchInput").disabled=true;
 
-    scanning = true;
-    scanner = new ZXingBrowser.BrowserMultiFormatReader();
+    scanning=true;
+    scanner=new ZXingBrowser.BrowserMultiFormatReader();
+    try{
+      const videoEl=$("video");
+      const constraints={audio:false,video:{facingMode:{ideal:"environment"}}};
 
-    try {
-      const videoEl = $("video");
-      const constraints = { audio: false, video: { facingMode: { ideal: "environment" } } };
-
-      await scanner.decodeFromConstraints(constraints, videoEl, (result, err, controls) => {
-        if (!scanner._controls) scanner._controls = controls;
-        if (result) {
-          const text = result.getText ? result.getText() : String(result.text || "");
-          const ean = digitsOnly(text);
-          if (ean) {
-            $("searchInput").value = ean;
-            // playSound true because scan is a deliberate action
-            lookup(ean, true);
+      await scanner.decodeFromConstraints(constraints, videoEl, (result, err, controls)=>{
+        if(!scanner._controls) scanner._controls=controls;
+        if(result){
+          const text=result.getText?result.getText():String(result.text||"");
+          const ean=digitsOnly(text);
+          if(ean){
+            $("searchInput").value=ean;
+            lookup(ean,true);
             stopScan();
           }
         }
       });
-    } catch (e) {
+    }catch(e){
       $("resultBox").classList.add("bad");
-      $("statusEmoji").textContent = "❌";
-      $("resultText").innerHTML = `
-        <div><strong>${lang === "ru" ? "Не удалось запустить камеру." : "Kamera konnte nicht gestartet werden."}</strong></div>
-        <div class="hint">${lang === "ru" ? "Разрешите доступ к камере и используйте HTTPS." : "Bitte Kamera-Berechtigung erlauben und HTTPS nutzen."}</div>
-      `;
+      $("statusEmoji").textContent="❌";
+      $("resultText").innerHTML = `<div><strong>${lang==="ru"?"Не удалось запустить камеру.":"Kamera konnte nicht gestartet werden."}</strong></div>`;
       errorSound();
       stopScan(true);
     }
   }
+  function stopScan(keep=false){
+    try{ if(scanner?._controls) scanner._controls.stop(); }catch{}
+    try{ scanner?.reset?.(); }catch{}
+    scanner=null; scanning=false;
 
-  function stopScan(keepUI = false) {
-    try { if (scanner?._controls) scanner._controls.stop(); } catch {}
-    try { scanner?.reset?.(); } catch {}
-    scanner = null;
-    scanning = false;
-
-    if (!keepUI) $("videoWrap").style.display = "none";
-    $("btnScan").disabled = !rows.length;
-    $("btnStop").disabled = true;
-    $("searchInput").disabled = !rows.length;
+    if(!keep) $("videoWrap").style.display="none";
+    $("btnScan").disabled=!rows.length;
+    $("btnStop").disabled=true;
+    $("searchInput").disabled=!rows.length;
   }
-
   $("btnScan").addEventListener("click", startScan);
-  $("btnStop").addEventListener("click", () => stopScan(false));
+  $("btnStop").addEventListener("click", ()=>stopScan(false));
 
-  /** -------- Send to Office -------- */
-  async function sendToOffice() {
-    // user gesture -> resume audio if needed
+  // --- Send to office
+  async function sendToOffice(){
     await ensureAudio();
+    if(!token){ alert(t("needLogin")); return; }
+    if(!lastFound || !lastFound.ean){ alert(t("noFound")); errorSound(); return; }
 
-    if (!lastFound || !lastFound.ean) {
-      alert(t("noFound"));
-      errorSound();
-      return;
-    }
     const size = $("sizeSelect").value;
+    const note = username; // wer hat gesendet
 
-    try {
-      const payload = { action: "add", ean: lastFound.ean, size: size, note: "" };
-
-      const res = await fetch(WEBAPP_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json().catch(() => null);
-      if (data && data.ok) {
-        alert(t("sentOk"));
-        sendSound();
-        vibrate([20]);
-      } else {
-        alert(t("sentFail"));
-        errorSound();
-      }
-    } catch (e) {
+    const data = await apiPost({ action:"queue_add", token, ean:lastFound.ean, size, note });
+    if(data && data.ok){
+      alert(t("sentOk"));
+      sendSound(); vibrate([20]);
+    } else {
       alert(t("sentFail"));
       errorSound();
     }
   }
-
   $("btnSendOffice").addEventListener("click", sendToOffice);
 
-  /** -------- Language -------- */
-  $("langSelect").value = lang;
-  $("langSelect").addEventListener("change", (ev) => {
-    lang = ev.target.value;
+  // --- Language
+  $("langSelect").value=lang;
+  $("langSelect").addEventListener("change",(ev)=>{
+    lang=ev.target.value;
     localStorage.setItem("lang", lang);
     applyLang();
-    // re-render found product in the new language (without extra sound)
-    if (lastFound) setFound(lastFound, false);
+    if(lastFound) setFound(lastFound,false);
   });
 
+  // init UI
   applyLang();
-  setNotLoaded();
+  if(token){
+    setLoginUI(true);
+    $("userPill").textContent = `${username} (${userRole})`;
+    setNotLoaded();
+  } else {
+    setLoginUI(false);
+    $("resultText").textContent = t("needLogin");
+    $("statusEmoji").textContent="🔒";
+  }
 })();
 </script>
 </body>
