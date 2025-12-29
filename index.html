@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html lang="de">
 <head>
@@ -112,14 +113,15 @@
       </div>
 
       <div class="result" id="resultBox">
-        <div class="status" id="statusEmoji">📦</div>
-        <div id="resultText" class="hint">Bitte CSV laden …</div>
+        <div class="status" id="statusEmoji">🔒</div>
+        <div id="resultText" class="hint">Bitte zuerst einloggen.</div>
       </div>
     </div>
   </div>
 
 <script>
 (() => {
+  // ✅ DEINE NEUE WEB APP URL (aktuell)
   const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx9SEn2wy7NRI2aRxwq4b7vYNqqe4nYIWGTVIJKjvk4R3ixo4i5f1EuKJYfduZDc2HS/exec";
 
   const I18N = {
@@ -148,7 +150,8 @@
       sentFail:"Fehler beim Senden ❌",
       noFound:"Kein Produkt gefunden.",
       db:(n)=>`DB: ${n}`,
-      needLogin:"Bitte zuerst einloggen."
+      needLogin:"Bitte zuerst einloggen.",
+      notAllowed:"Dein Account darf hier nicht senden."
     },
     ru: {
       title:"Поиск товара",
@@ -175,19 +178,27 @@
       sentFail:"Ошибка отправки ❌",
       noFound:"Товар не найден.",
       db:(n)=>`БД: ${n}`,
-      needLogin:"Сначала войдите."
+      needLogin:"Сначала войдите.",
+      notAllowed:"Ваш аккаунт не может отправлять."
     }
   };
 
   let lang = localStorage.getItem("lang") || "de";
+
+  // Token + Userdaten (für diese Seite)
   let token = localStorage.getItem("token_staff") || "";
   let userRole = localStorage.getItem("role_staff") || "";
   let username = localStorage.getItem("user_staff") || "";
 
+  // CSV DB
   let rows = [];
   let indexByEAN = new Map();
+
+  // Scanner
   let scanner = null;
   let scanning = false;
+
+  // last found
   let lastFound = null;
 
   const $ = (id)=>document.getElementById(id);
@@ -195,11 +206,11 @@
 
   // --- Sound (no files)
   let audioCtx=null;
-  function soundEnabled(){return $("soundToggle")?.checked;}
+  function soundEnabled(){ return $("soundToggle")?.checked; }
   async function ensureAudio(){
     if(!soundEnabled()) return null;
     if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    if(audioCtx.state==="suspended"){ try{await audioCtx.resume();}catch{} }
+    if(audioCtx.state==="suspended"){ try{ await audioCtx.resume(); } catch {} }
     return audioCtx;
   }
   function beep(freq=880,ms=120,type="sine",gainVal=0.08){
@@ -216,10 +227,10 @@
       osc.start(t0); osc.stop(t0+ms/1000+0.02);
     });
   }
-  function successSound(){beep(880,110,"sine",0.09); setTimeout(()=>beep(1320,90,"sine",0.07),120);}
-  function errorSound(){beep(220,160,"square",0.06); setTimeout(()=>beep(180,160,"square",0.05),170);}
-  function sendSound(){beep(660,90,"triangle",0.07); setTimeout(()=>beep(990,70,"triangle",0.06),100);}
-  function vibrate(p=[40,20,40]){try{navigator.vibrate&&navigator.vibrate(p);}catch{}}
+  function successSound(){ beep(880,110,"sine",0.09); setTimeout(()=>beep(1320,90,"sine",0.07),120); }
+  function errorSound(){ beep(220,160,"square",0.06); setTimeout(()=>beep(180,160,"square",0.05),170); }
+  function sendSound(){ beep(660,90,"triangle",0.07); setTimeout(()=>beep(990,70,"triangle",0.06),100); }
+  function vibrate(p=[40,20,40]){ try{ navigator.vibrate && navigator.vibrate(p); } catch {} }
 
   $("soundToggle").checked = (localStorage.getItem("sound") ?? "1") === "1";
   $("soundToggle").addEventListener("change", ()=>{
@@ -228,8 +239,8 @@
   });
 
   function t(key,arg){
-    const d = I18N[lang] || I18N.de;
-    const v = d[key];
+    const d=I18N[lang]||I18N.de;
+    const v=d[key];
     return (typeof v==="function") ? v(arg) : v;
   }
 
@@ -243,23 +254,24 @@
   }
 
   function applyLang(){
-    $("title").textContent = t("title");
-    $("loginUser").placeholder = t("loginUser");
-    $("loginPin").placeholder  = t("loginPin");
-    $("btnLogin").textContent  = t("loginBtn");
-    $("loginHint").textContent = t("loginHint");
+    $("title").textContent=t("title");
+    $("loginUser").placeholder=t("loginUser");
+    $("loginPin").placeholder=t("loginPin");
+    $("btnLogin").textContent=t("loginBtn");
+    $("loginHint").textContent=t("loginHint");
 
-    $("csvHint").textContent = t("csvHint");
-    $("searchInput").placeholder = t("searchPh");
-    $("searchHint").textContent = t("searchHint");
-    $("btnScan").textContent = t("scanBtn");
-    $("btnStop").textContent = t("stopBtn");
-    $("btnLogout").textContent = t("logoutBtn");
-    $("sizeHint").textContent = t("sizeHint");
-    $("btnSendOffice").textContent = t("sendBtn");
-    $("scanHint").textContent = t("scanHint");
-    $("scanTip").textContent = t("scanTip");
-    $("dbStatus").textContent = t("db", rows.length || "–");
+    $("csvHint").textContent=t("csvHint");
+    $("searchInput").placeholder=t("searchPh");
+    $("searchHint").textContent=t("searchHint");
+    $("btnScan").textContent=t("scanBtn");
+    $("btnStop").textContent=t("stopBtn");
+    $("btnLogout").textContent=t("logoutBtn");
+    $("sizeHint").textContent=t("sizeHint");
+    $("btnSendOffice").textContent=t("sendBtn");
+    $("scanHint").textContent=t("scanHint");
+    $("scanTip").textContent=t("scanTip");
+
+    $("dbStatus").textContent=t("db", rows.length || "–");
     applySizeLabels();
   }
 
@@ -267,39 +279,48 @@
     $("loginBox").classList.toggle("hidden", loggedIn);
     $("appBox").classList.toggle("hidden", !loggedIn);
     $("userPill").textContent = loggedIn ? `${username} (${userRole})` : "—";
+    if(!loggedIn){
+      $("statusEmoji").textContent="🔒";
+      $("resultText").textContent=t("needLogin");
+    }
   }
 
   async function apiPost(payload){
     const res = await fetch(WEBAPP_URL, {
       method:"POST",
-      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      headers:{ "Content-Type":"text/plain;charset=utf-8" },
       body: JSON.stringify(payload)
     });
     return await res.json();
   }
 
+  // --- LOGIN
   async function login(){
     await ensureAudio();
-    const u = String($("loginUser").value||"").trim();
-    const p = digitsOnly($("loginPin").value||"");
-    if(!u || p.length < 4){ errorSound(); return; }
+    const u=String($("loginUser").value||"").trim();
+    const p=digitsOnly($("loginPin").value||"");
+
+    if(!u || p.length<4){ errorSound(); return; }
 
     const data = await apiPost({ action:"auth_login", username:u, pin:p });
-    if(data && data.ok){
-      token = data.token;
-      username = data.user.username;
-      userRole = data.user.role;
 
+    if(data && data.ok){
+      token=data.token;
+      username=data.user.username;
+      userRole=data.user.role;
+
+      // speichern (für diese Seite nutzen wir "token_staff" usw.)
       localStorage.setItem("token_staff", token);
       localStorage.setItem("user_staff", username);
       localStorage.setItem("role_staff", userRole);
 
       setLoginUI(true);
+      setNotLoaded();
       successSound(); vibrate([30]);
       return;
     }
 
-    if(data && data.error === "USER_DISABLED") alert(t("userDisabled"));
+    if(data && data.error==="USER_DISABLED") alert(t("userDisabled"));
     else alert(t("badCred"));
     errorSound();
   }
@@ -309,10 +330,18 @@
     localStorage.removeItem("token_staff");
     localStorage.removeItem("user_staff");
     localStorage.removeItem("role_staff");
+
+    // reset UI
     rows=[]; indexByEAN=new Map(); lastFound=null;
+    $("csvFile").value="";
     $("searchInput").value="";
-    $("resultText").textContent = t("needLogin");
-    $("statusEmoji").textContent="🔒";
+    $("searchInput").disabled=true;
+    $("btnScan").disabled=true;
+    $("btnStop").disabled=true;
+    $("btnSendOffice").disabled=true;
+    $("sizeSelect").disabled=true;
+
+    stopScan(true);
     setLoginUI(false);
   }
 
@@ -326,7 +355,7 @@
     const preis=(r["VK-Preis"]??r["VK Preis"]??r["Preis"]??r["price"]??"").toString().trim();
     const eanRaw=(r["EAN"]??r["ean"]??r["Barcode"]??"").toString().trim();
     const ean=digitsOnly(eanRaw);
-    return {artikel,preis,ean};
+    return {artikel, preis, ean};
   }
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g,(m)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
@@ -336,13 +365,16 @@
     $("resultBox").classList.remove("ok","bad");
     $("statusEmoji").textContent = token ? "📦" : "🔒";
     $("resultText").textContent = token ? t("notLoaded") : t("needLogin");
-    $("btnSendOffice").disabled = true;
-    $("sizeSelect").disabled = true;
     lastFound=null;
+    $("btnSendOffice").disabled=true;
+    $("sizeSelect").disabled=true;
   }
+
   function setFound(row, playSound=true){
-    $("resultBox").classList.remove("bad"); $("resultBox").classList.add("ok");
+    $("resultBox").classList.remove("bad");
+    $("resultBox").classList.add("ok");
     $("statusEmoji").textContent="✅";
+
     lastFound=row;
     $("btnSendOffice").disabled=false;
     $("sizeSelect").disabled=false;
@@ -353,11 +385,14 @@
         <div class="label">${lang==="ru"?"Товар:":"Produkt:"}</div><div><strong>${escapeHtml(row.artikel||"-")}</strong></div>
         <div class="label">${lang==="ru"?"Цена:":"Preis:"}</div><div>${escapeHtml(priceText)}</div>
         <div class="label">EAN:</div><div class="mono">${escapeHtml(row.ean||"-")}</div>
-      </div>`;
+      </div>
+    `;
     if(playSound){ successSound(); vibrate([30]); }
   }
+
   function setNotFound(playSound=true){
-    $("resultBox").classList.remove("ok"); $("resultBox").classList.add("bad");
+    $("resultBox").classList.remove("ok");
+    $("resultBox").classList.add("bad");
     $("statusEmoji").textContent="❌";
     $("resultText").innerHTML = `<div><strong>Produkt nicht gefunden</strong></div><div><strong>Товар не найден</strong></div>`;
     lastFound=null;
@@ -370,6 +405,7 @@
     const s=String(q||"").trim();
     if(!s){ setNotFound(false); return; }
     const d=digitsOnly(s);
+
     if(d.length>=6){
       const hit=indexByEAN.get(d);
       if(hit) return setFound(hit, playSound);
@@ -377,15 +413,16 @@
       if(hit2) return setFound(hit2, playSound);
       return setNotFound(playSound);
     }
+
     const ql=s.toLowerCase();
     const hit=rows.find(r=>(r.artikel||"").toLowerCase().includes(ql));
     if(hit) return setFound(hit, playSound);
     return setNotFound(playSound);
   }
 
-  $("csvFile").addEventListener("change", (ev)=>{
+  $("csvFile").addEventListener("change",(ev)=>{
     if(!token){ alert(t("needLogin")); return; }
-    const file = ev.target.files?.[0];
+    const file=ev.target.files?.[0];
     if(!file){ setNotLoaded(); return; }
 
     setNotLoaded();
@@ -395,9 +432,10 @@
       header:true, skipEmptyLines:true,
       complete:(res)=>{
         const raw=res.data||[];
-        rows = raw.map(normalizeRow).filter(r=>r.artikel||r.ean);
+        rows = raw.map(normalizeRow).filter(r=>r.artikel || r.ean);
+
         indexByEAN=new Map();
-        for(const r of rows) if(r.ean) indexByEAN.set(r.ean,r);
+        for(const r of rows) if(r.ean) indexByEAN.set(r.ean, r);
 
         $("searchInput").disabled=false;
         $("btnScan").disabled=false;
@@ -434,18 +472,19 @@
 
     scanning=true;
     scanner=new ZXingBrowser.BrowserMultiFormatReader();
+
     try{
       const videoEl=$("video");
-      const constraints={audio:false,video:{facingMode:{ideal:"environment"}}};
+      const constraints={audio:false, video:{facingMode:{ideal:"environment"}}};
 
       await scanner.decodeFromConstraints(constraints, videoEl, (result, err, controls)=>{
         if(!scanner._controls) scanner._controls=controls;
         if(result){
-          const text=result.getText?result.getText():String(result.text||"");
-          const ean=digitsOnly(text);
+          const text = result.getText ? result.getText() : String(result.text || "");
+          const ean = digitsOnly(text);
           if(ean){
-            $("searchInput").value=ean;
-            lookup(ean,true);
+            $("searchInput").value = ean;
+            lookup(ean, true);
             stopScan();
           }
         }
@@ -458,37 +497,75 @@
       stopScan(true);
     }
   }
-  function stopScan(keep=false){
+
+  function stopScan(keepUI=false){
     try{ if(scanner?._controls) scanner._controls.stop(); }catch{}
     try{ scanner?.reset?.(); }catch{}
-    scanner=null; scanning=false;
+    scanner=null;
+    scanning=false;
 
-    if(!keep) $("videoWrap").style.display="none";
-    $("btnScan").disabled=!rows.length;
-    $("btnStop").disabled=true;
-    $("searchInput").disabled=!rows.length;
+    if(!keepUI) $("videoWrap").style.display="none";
+    $("btnScan").disabled = !rows.length;
+    $("btnStop").disabled = true;
+    $("searchInput").disabled = !rows.length;
   }
+
   $("btnScan").addEventListener("click", startScan);
   $("btnStop").addEventListener("click", ()=>stopScan(false));
 
-  // --- Send to office
+  // --- SEND (Admin hat alle Rechte)
+  function canSend(role){
+    // ✅ Hier ist die entscheidende Änderung:
+    // admin + staff dürfen senden (office NICHT)
+    return (role === "admin" || role === "staff");
+  }
+
   async function sendToOffice(){
     await ensureAudio();
-    if(!token){ alert(t("needLogin")); return; }
-    if(!lastFound || !lastFound.ean){ alert(t("noFound")); errorSound(); return; }
+
+    if(!token){
+      alert(t("needLogin"));
+      errorSound();
+      return;
+    }
+
+    if(!canSend(userRole)){
+      alert(t("notAllowed"));
+      errorSound();
+      return;
+    }
+
+    if(!lastFound || !lastFound.ean){
+      alert(t("noFound"));
+      errorSound();
+      return;
+    }
 
     const size = $("sizeSelect").value;
     const note = username; // wer hat gesendet
 
-    const data = await apiPost({ action:"queue_add", token, ean:lastFound.ean, size, note });
-    if(data && data.ok){
-      alert(t("sentOk"));
-      sendSound(); vibrate([20]);
-    } else {
+    try{
+      const data = await apiPost({
+        action:"queue_add",
+        token,
+        ean:lastFound.ean,
+        size,
+        note
+      });
+
+      if(data && data.ok){
+        alert(t("sentOk"));
+        sendSound(); vibrate([20]);
+      }else{
+        alert(t("sentFail") + (data?.error ? ("\n" + data.error) : ""));
+        errorSound();
+      }
+    }catch(e){
       alert(t("sentFail"));
       errorSound();
     }
   }
+
   $("btnSendOffice").addEventListener("click", sendToOffice);
 
   // --- Language
@@ -500,18 +577,23 @@
     if(lastFound) setFound(lastFound,false);
   });
 
-  // init UI
+  // init
   applyLang();
+
   if(token){
     setLoginUI(true);
-    $("userPill").textContent = `${username} (${userRole})`;
     setNotLoaded();
-  } else {
+
+    // falls du noch keine CSV geladen hast
+    $("searchInput").disabled = true;
+    $("btnScan").disabled = true;
+    $("btnSendOffice").disabled = true;
+    $("sizeSelect").disabled = true;
+  }else{
     setLoginUI(false);
-    $("resultText").textContent = t("needLogin");
-    $("statusEmoji").textContent="🔒";
   }
 })();
 </script>
 </body>
 </html>
+```
