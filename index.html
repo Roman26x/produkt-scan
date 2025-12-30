@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Produkt-Suche</title>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
@@ -58,7 +59,7 @@
     .hint{ font-size:12px; color:#666; margin-top:6px; }
     .hidden{ display:none; }
 
-    /* ===== LOGIN (schönes Form) ===== */
+    /* ===== LOGIN ===== */
     .loginWrap{ max-width:460px; margin:0 auto; padding:0 8px; }
     .loginCard{
       background:#fff;
@@ -155,15 +156,23 @@
     .kv{ display:grid; grid-template-columns: 120px 1fr; gap:6px 10px; }
     .kv div{ font-size:14px; }
     .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-
-    video{
-      width:100%;
-      max-height:340px;
-      background:#000;
-      border-radius:12px;
-      border:1px solid #ddd;
+    .tag{
+      display:inline-block;
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid #e5e5e5;
+      background:#f3f3f3;
+      white-space:nowrap;
     }
+
+    /* Video Scanner */
+    .scanWrap{ border:1px solid #ddd; border-radius:12px; overflow:hidden; background:#000; }
+    video{ width:100%; max-height:380px; display:block; background:#000; }
   </style>
+
+  <!-- ✅ ZXing (läuft überall) -->
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 </head>
 
 <body>
@@ -255,7 +264,9 @@
       <div class="divider"></div>
 
       <div id="scanBox" class="hidden">
-        <video id="video" playsinline></video>
+        <div class="scanWrap">
+          <video id="video" playsinline muted></video>
+        </div>
         <div class="hint" id="scanHint">Halte den Barcode in die Kamera.</div>
         <div class="row">
           <input type="text" id="manualEan" placeholder="EAN manuell eingeben" style="flex:1 1 240px;" />
@@ -373,9 +384,9 @@
     const v=d[key];
     return (typeof v==="function") ? v(arg) : v;
   }
+
   function applyLang(){
     $("title").textContent=t("title");
-
     $("loginH2").textContent=t("loginH2");
     $("loginP").textContent=t("loginP");
     $("loginUserLabel").textContent=t("userLabel");
@@ -399,13 +410,12 @@
     lang=e.target.value;
     localStorage.setItem("lang", lang);
     applyLang();
-    // Ergebnis neu rendern
     if(currentFound) renderFound(currentFound);
     else if(currentNotFound) renderNotFound(currentNotFound);
     else clearResult();
   });
 
-  // ===== sound =====
+  // ===== Sound =====
   let audioCtx=null;
   function soundEnabled(){ return $("soundToggle")?.checked; }
   async function ensureAudio(){
@@ -437,7 +447,7 @@
     if($("soundToggle").checked) ensureAudio();
   });
 
-  // ===== float labels =====
+  // Float labels
   function bindFloatLabel(inputId){
     const inp=$(inputId);
     const update=()=>{ inp.value?.trim()?inp.classList.add("has-value"):inp.classList.remove("has-value"); };
@@ -446,7 +456,7 @@
   }
   bindFloatLabel("loginUser"); bindFloatLabel("loginPin");
 
-  // ===== Auth state =====
+  // ===== Auth =====
   let token = localStorage.getItem("token") || "";
   let username = localStorage.getItem("user") || "";
   let userRole = localStorage.getItem("role") || "";
@@ -456,12 +466,10 @@
     $("appBox").classList.toggle("hidden", !loggedIn);
     $("userPill").textContent = loggedIn ? `${username} (${userRole})` : "—";
   }
-
   function hasStaffAccess(role){
     role = String(role||"").toLowerCase();
     return role === "staff" || role === "admin";
   }
-
   async function apiPost(payload){
     const res = await fetch(WEBAPP_URL, {
       method:"POST",
@@ -470,11 +478,10 @@
     });
     const text = await res.text();
     if(!text.trim().startsWith("{") && !text.trim().startsWith("[")){
-      throw new Error("WebApp antwortet nicht als JSON. Anfang: " + text.slice(0,120));
+      throw new Error("WebApp antwortet nicht als JSON: " + text.slice(0,120));
     }
     return JSON.parse(text);
   }
-
   function showError(elId,msg){
     const el=$(elId);
     el.textContent = msg || "";
@@ -483,7 +490,6 @@
   function setLoadingLogin(on){
     $("btnLogin").classList.toggle("loading", !!on);
   }
-
   async function login(){
     await ensureAudio();
     showError("userError",""); showError("pinError","");
@@ -534,7 +540,6 @@
       setLoadingLogin(false);
     }
   }
-
   $("loginForm").addEventListener("submit",(e)=>{ e.preventDefault(); login(); });
 
   function logout(){
@@ -543,15 +548,15 @@
     localStorage.removeItem("user");
     localStorage.removeItem("role");
     setLoginUI(false);
+    stopCamera();
   }
   $("btnLogout").addEventListener("click", logout);
 
   // ===== CSV DB =====
   let dbRows = [];
-  let dbInfo = { name:"—", count:0, cols:[] };
+  let dbInfo = { name:"—", count:0 };
 
   function parseCSV(text){
-    // Simple robust CSV parser (supports quotes)
     const rows=[];
     let i=0, field="", row=[], inQuotes=false;
     while(i<text.length){
@@ -573,7 +578,6 @@
     row.push(field); rows.push(row);
     return rows;
   }
-
   function guessColumns(header){
     const h = header.map(x=>String(x||"").trim().toLowerCase());
     const find = (...names)=> {
@@ -589,17 +593,15 @@
       idxPrice:find("price","preis","vk","verkaufspreis","bruttopreis"),
     };
   }
-
   function updateDbHint(){
     $("dbHint").textContent = t("dbHint", `${dbInfo.name} (${dbInfo.count})`);
   }
-
   $("csvFile").addEventListener("change", async (e)=>{
     const file = e.target.files && e.target.files[0];
     if(!file) return;
     const text = await file.text();
     const table = parseCSV(text);
-    if(!table.length){ dbRows=[]; dbInfo={name:file.name,count:0,cols:[]}; updateDbHint(); return; }
+    if(!table.length){ dbRows=[]; dbInfo={name:file.name,count:0}; updateDbHint(); return; }
 
     const header = table[0];
     const cols = guessColumns(header);
@@ -609,20 +611,22 @@
       const name = cols.idxName>=0 ? String(r[cols.idxName]||"") : "";
       const ean = cols.idxEan>=0 ? digitsOnly(r[cols.idxEan]) : "";
       const price = cols.idxPrice>=0 ? String(r[cols.idxPrice]||"") : "";
-      return { name, ean, price, raw:r };
+      return { name, ean, price };
     });
 
-    dbInfo = { name:file.name, count:dbRows.length, cols:header };
+    dbInfo = { name:file.name, count:dbRows.length };
     updateDbHint();
     clearResult();
     $("searchHint").textContent = "";
     successSound();
   });
 
-  // ===== Search / Result =====
-  let currentFound = null;
-  let currentNotFound = null;
+  // ===== Search/Result =====
+  let currentFound=null, currentNotFound=null;
 
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g,(m)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+  }
   function clearResult(){
     currentFound=null; currentNotFound=null;
     $("resultIcon").textContent="—";
@@ -631,7 +635,6 @@
     $("btnSend").disabled=true;
     $("sendHint").textContent="";
   }
-
   function renderFound(item){
     currentFound=item; currentNotFound=null;
     $("resultIcon").textContent="✅";
@@ -645,7 +648,6 @@
     $("btnSend").disabled=false;
     $("sendHint").textContent="";
   }
-
   function renderNotFound(ean){
     currentFound=null; currentNotFound=ean;
     $("resultIcon").textContent="❌";
@@ -657,11 +659,6 @@
     $("btnSend").disabled=true;
     $("sendHint").textContent="";
   }
-
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g,(m)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
-  }
-
   function findInDb(query){
     if(!dbRows.length) return { type:"no_db" };
     const q = norm(query);
@@ -679,7 +676,6 @@
     const hit = dbRows.find(r=>(r.name||"").toLowerCase().includes(qLower));
     if(hit) return { type:"found", item:hit };
 
-    // fallback: try digits search even if short
     if(qDigits){
       const hit2 = dbRows.find(r=>r.ean && r.ean.includes(qDigits));
       if(hit2) return { type:"found", item:hit2 };
@@ -687,7 +683,6 @@
 
     return { type:"not_found", ean:qDigits || q };
   }
-
   function doSearch(query){
     const res = findInDb(query);
     if(res.type==="no_db"){
@@ -696,148 +691,131 @@
       return;
     }
     $("searchHint").textContent = "";
-    if(res.type==="found"){
-      renderFound(res.item);
-      successSound();
-    }else if(res.type==="not_found"){
-      renderNotFound(res.ean);
-      errorSound();
-    }else{
-      clearResult();
-    }
+    if(res.type==="found"){ renderFound(res.item); successSound(); }
+    else if(res.type==="not_found"){ renderNotFound(res.ean); errorSound(); }
+    else { clearResult(); }
   }
-
   $("searchInput").addEventListener("input", (e)=>{
     const v = e.target.value;
     if(v.trim().length===0){ clearResult(); return; }
-    // live search
     doSearch(v);
   });
+  $("btnManual").addEventListener("click", ()=> doSearch($("manualEan").value));
 
-  $("btnManual").addEventListener("click", ()=>{
-    doSearch($("manualEan").value);
-  });
-
-  // ===== Send to Office (Queue) =====
+  // ===== Send Queue =====
   $("btnSend").addEventListener("click", async ()=>{
     await ensureAudio();
-
-    if(!dbRows.length){
-      $("sendHint").textContent = t("needDb");
-      errorSound();
-      return;
-    }
-    if(!currentFound || !currentFound.ean){
-      $("sendHint").textContent = t("needProduct");
-      errorSound();
-      return;
-    }
+    if(!dbRows.length){ $("sendHint").textContent=t("needDb"); errorSound(); return; }
+    if(!currentFound || !currentFound.ean){ $("sendHint").textContent=t("needProduct"); errorSound(); return; }
 
     $("btnSend").disabled=true;
     $("sendHint").textContent="…";
-
     try{
-      const size = $("sizeSelect").value; // "80x39" etc.
-      const payload = {
+      const size = $("sizeSelect").value;
+      const data = await apiPost({
         action:"queue_add",
         token,
         ean: String(currentFound.ean),
         size: String(size),
         note: String(username || "staff")
-      };
-      const data = await apiPost(payload);
+      });
       if(!data || !data.ok) throw new Error(data?.error || "send_failed");
-
-      $("sendHint").textContent = t("sendOk");
+      $("sendHint").textContent=t("sendOk");
       successSound();
     }catch(e){
-      $("sendHint").textContent = t("sendFail", String(e));
+      $("sendHint").textContent=t("sendFail", String(e));
       errorSound();
     }finally{
-      setTimeout(()=>{ $("btnSend").disabled = !(currentFound && currentFound.ean); }, 600);
+      setTimeout(()=>{ $("btnSend").disabled = !(currentFound && currentFound.ean); }, 500);
     }
   });
 
-  // ===== Camera Scan =====
-  let stream=null;
-  let scanTimer=null;
-  let barcodeDetector=null;
+  // ===== ZXing Kamera Scan =====
+  let zxingReader = null;
+  let scanning = false;
 
   async function startCamera(){
     $("scanBox").classList.remove("hidden");
     $("btnScan").disabled=true;
     $("btnStop").disabled=false;
 
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
-      audio: false
-    });
-    $("video").srcObject = stream;
-    await $("video").play();
-
-    if("BarcodeDetector" in window){
-      try{
-        barcodeDetector = new BarcodeDetector({ formats: ["ean_13","ean_8","code_128","upc_a","upc_e"] });
-      }catch{
-        barcodeDetector = new BarcodeDetector();
-      }
-    }else{
-      barcodeDetector = null;
-    }
-
-    if(!barcodeDetector){
-      $("scanHint").textContent = "BarcodeDetector nicht verfügbar. Bitte EAN manuell eingeben.";
+    if(!window.ZXing){
+      $("scanHint").textContent = "ZXing konnte nicht geladen werden (Internet?)";
+      $("btnScan").disabled=false;
+      $("btnStop").disabled=true;
       return;
     }
 
-    scanTimer = setInterval(async ()=>{
-      try{
-        const barcodes = await barcodeDetector.detect($("video"));
-        if(barcodes && barcodes.length){
-          const raw = barcodes[0].rawValue || "";
-          const ean = digitsOnly(raw);
-          if(ean.length>=8){
-            $("manualEan").value = ean;
-            doSearch(ean);
+    if(!zxingReader){
+      zxingReader = new ZXing.BrowserMultiFormatReader();
+    }
+
+    try{
+      scanning = true;
+
+      // Back camera bevorzugen
+      const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+      let deviceId = devices?.[0]?.deviceId || null;
+
+      // Versuch: ein Gerät mit "back" / "rear"
+      for(const d of devices){
+        const name = (d.label || "").toLowerCase();
+        if(name.includes("back") || name.includes("rear") || name.includes("rück") || name.includes("environment")){
+          deviceId = d.deviceId;
+          break;
+        }
+      }
+
+      $("scanHint").textContent = t("scanHint");
+
+      await zxingReader.decodeFromVideoDevice(
+        deviceId,
+        $("video"),
+        (result, err) => {
+          if(!scanning) return;
+          if(result){
+            const raw = result.getText ? result.getText() : String(result);
+            const ean = digitsOnly(raw);
+            if(ean.length >= 8){
+              $("manualEan").value = ean;
+              doSearch(ean);
+            }
           }
         }
-      }catch{}
-    }, 350);
-  }
-
-  function stopCamera(){
-    $("btnScan").disabled=false;
-    $("btnStop").disabled=true;
-    $("scanBox").classList.add("hidden");
-
-    if(scanTimer){ clearInterval(scanTimer); scanTimer=null; }
-    if(stream){
-      stream.getTracks().forEach(t=>t.stop());
-      stream=null;
-    }
-    $("video").srcObject = null;
-  }
-
-  $("btnScan").addEventListener("click", async ()=>{
-    try{
-      await startCamera();
+      );
     }catch(e){
       $("scanHint").textContent = "Kamera-Fehler: " + String(e);
       $("btnScan").disabled=false;
       $("btnStop").disabled=true;
-      errorSound();
+      scanning=false;
     }
-  });
+  }
+
+  function stopCamera(){
+    scanning=false;
+    $("btnScan").disabled=false;
+    $("btnStop").disabled=true;
+    $("scanBox").classList.add("hidden");
+
+    try{
+      if(zxingReader) zxingReader.reset();
+    }catch{}
+    $("video").srcObject = null;
+  }
+
+  $("btnScan").addEventListener("click", startCamera);
   $("btnStop").addEventListener("click", stopCamera);
 
-  // ===== Init =====
+  // ===== init =====
   applyLang();
+  if(token && hasStaffAccess(userRole)) setLoginUI(true);
+  else setLoginUI(false);
 
-  if(token && hasStaffAccess(userRole)){
-    setLoginUI(true);
-  }else{
-    setLoginUI(false);
-  }
+  $("langSelect").addEventListener("change", ()=>{ /* already handled above */ });
+
+  $("soundToggle").addEventListener("change", ()=>{
+    if($("soundToggle").checked) ensureAudio();
+  });
 
 })();
 </script>
