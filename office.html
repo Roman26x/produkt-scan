@@ -11,7 +11,7 @@
     body { margin:0; padding:16px; background:#f6f7f8; color:#111; }
 
     .card{
-      max-width: 1100px;
+      max-width: 1150px;
       margin: 0 auto;
       background:#fff;
       border-radius:14px;
@@ -19,40 +19,27 @@
       box-shadow:0 6px 20px rgba(0,0,0,.08);
       overflow:hidden;
     }
-
     .topbar{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
+      display:flex; justify-content:space-between; align-items:center;
+      gap:10px; flex-wrap:wrap;
     }
     h1{ margin:0; font-size:18px; }
 
     .right{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
+      display:flex; align-items:center; gap:10px;
+      flex-wrap:wrap; justify-content:flex-end;
     }
-
     .pill{
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-      background:#f0f0f0;
-      border:1px solid #e5e5e5;
-      max-width:100%;
-      white-space:nowrap;
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      background:#f0f0f0; border:1px solid #e5e5e5;
+      max-width:100%; white-space:nowrap;
     }
+    .toggle{ display:flex; align-items:center; gap:8px; }
 
     button{
       padding:10px 12px;
-      border:0;
-      border-radius:10px;
-      background:#111;
-      color:#fff;
+      border:0; border-radius:10px;
+      background:#111; color:#fff;
       cursor:pointer;
     }
     button.secondary{ background:#444; }
@@ -60,32 +47,11 @@
     button.ok{ background:#15803d; }
     button:disabled{ opacity:.5; cursor:not-allowed; }
 
-    .toggle{ display:flex; align-items:center; gap:8px; }
-
-    .hint{ font-size:12px; color:#666; margin-top:6px; }
     .divider{ height:1px; background:#eee; margin:14px 0; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px; }
 
-    .row{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      margin-top:12px;
-    }
-
-    input[type="text"], input[type="password"], select{
-      width:100%;
-      padding:12px;
-      border:1px solid #ddd;
-      border-radius:10px;
-      background:#fff;
-    }
-
-    .loginWrap{
-      max-width: 460px;
-      margin: 0 auto;
-      padding: 0 8px;
-    }
+    /* ===== LOGIN ===== */
+    .loginWrap{ max-width:460px; margin:0 auto; padding:0 8px; }
     .loginCard{
       background:#fff;
       border-radius:12px;
@@ -97,10 +63,8 @@
     .loginHeader{ text-align:center; margin-bottom:18px; }
     .loginHeader h2{ margin:0 0 6px 0; font-size:1.6rem; font-weight:800; color:#1e293b; }
     .loginHeader p{ margin:0; color:#64748b; font-size:.9rem; }
-
     .form-group{ margin-bottom:16px; }
     .input-wrapper{ position:relative; width:100%; }
-
     .input-wrapper input{
       width:100%;
       background:#fff;
@@ -113,23 +77,16 @@
       transition:all .2s ease;
     }
     .input-wrapper input::placeholder{ color:transparent; }
-
     .input-wrapper label{
-      position:absolute;
-      left:16px;
-      top:14px;
-      color:#64748b;
-      font-size:14px;
+      position:absolute; left:16px; top:14px;
+      color:#64748b; font-size:14px;
       transition:all .2s ease;
       pointer-events:none;
       transform-origin:left top;
     }
-
     .input-wrapper input:focus,
     .input-wrapper input:valid,
-    .input-wrapper input.has-value{
-      border-color:#6366f1;
-    }
+    .input-wrapper input.has-value{ border-color:#6366f1; }
     .input-wrapper input:focus + label,
     .input-wrapper input:valid + label,
     .input-wrapper input.has-value + label{
@@ -137,41 +94,30 @@
       color:#6366f1;
       font-weight:700;
     }
-
     .error-message{
-      display:block;
-      color:#ef4444;
-      font-size:.78rem;
-      font-weight:600;
-      margin-top:6px;
-      margin-left:4px;
-      opacity:0;
-      transform:translateY(-4px);
+      display:block; color:#ef4444; font-size:.78rem;
+      font-weight:600; margin-top:6px; margin-left:4px;
+      opacity:0; transform:translateY(-4px);
       transition:all .2s ease;
       min-height:1em;
+      white-space:pre-wrap;
     }
     .error-message.show{ opacity:1; transform:translateY(0); }
-
     .login-btn{
       width:100%;
       background:#6366f1;
-      border:none;
-      border-radius:8px;
+      border:none; border-radius:8px;
       padding:12px 24px;
-      color:white;
-      font-size:16px;
-      font-weight:800;
-      cursor:pointer;
+      color:#fff; font-size:16px;
+      font-weight:800; cursor:pointer;
       transition:all .2s ease;
       position:relative;
     }
     .login-btn:hover{ background:#4f46e5; }
-
     .login-btn.loading{ pointer-events:none; background:#a5a6f6; }
     .btn-text{ transition:opacity .2s ease; }
     .btn-loader{
-      position:absolute;
-      top:50%; left:50%;
+      position:absolute; top:50%; left:50%;
       transform:translate(-50%,-50%);
       width:16px; height:16px;
       border:2px solid transparent;
@@ -183,12 +129,12 @@
     }
     .login-btn.loading .btn-text{ opacity:0; }
     .login-btn.loading .btn-loader{ opacity:1; }
-
     @keyframes spin{
       0%{ transform:translate(-50%,-50%) rotate(0deg); }
       100%{ transform:translate(-50%,-50%) rotate(360deg); }
     }
 
+    /* ===== TABLE ===== */
     table{
       width:100%;
       border-collapse:collapse;
@@ -214,8 +160,6 @@
     }
     tbody tr:hover{ background:#fafafa; }
 
-    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-
     .tag{
       display:inline-block;
       font-size:12px;
@@ -225,31 +169,10 @@
       background:#f3f3f3;
       white-space:nowrap;
     }
-    .tag.new{ background:#ecfdf5; border-color:#bbf7d0; }
-    .tag.done{ background:#eff6ff; border-color:#bfdbfe; }
-
-    .actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-
-    @media (max-width:720px){
-      body{ padding:10px; }
-      .pill{ white-space:normal; }
-      table{ font-size:13px; }
-      thead{ display:none; }
-      tbody td{ display:block; border-bottom:none; }
-      tbody tr{ border-bottom:1px solid #eee; display:block; padding:8px 0; }
-      tbody td[data-label]::before{
-        content: attr(data-label) ": ";
-        font-weight:700;
-        color:#444;
-      }
-      .actions{ margin-top:8px; }
-    }
-
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; }
     .hidden{ display:none; }
+    .hint{ font-size:12px; color:#666; margin-top:6px; }
   </style>
 </head>
 
@@ -257,9 +180,9 @@
   <div class="card">
     <div class="topbar">
       <h1 id="title">Office – Etikett Queue</h1>
+
       <div class="right">
         <span class="pill" id="userPill">—</span>
-        <span class="pill" id="countPill">0</span>
 
         <label class="pill toggle" title="Sound an/aus">
           <input type="checkbox" id="soundToggle" checked />
@@ -278,7 +201,7 @@
       <div class="loginCard">
         <div class="loginHeader">
           <h2 id="loginH2">Anmelden</h2>
-          <p id="loginP">Benutzername und PIN eingeben</p>
+          <p id="loginP">Office-Benutzername und PIN eingeben</p>
         </div>
 
         <form id="loginForm" novalidate>
@@ -302,7 +225,7 @@
             <span class="btn-text" id="btnLoginText">Einloggen</span>
             <span class="btn-loader"></span>
           </button>
-          <div class="hint" id="loginHint">Nur Admin/Büro-Accounts dürfen die Liste sehen.</div>
+          <div class="hint" id="loginHint">Office/Admin darf diese Seite benutzen.</div>
         </form>
       </div>
       <div class="divider"></div>
@@ -311,31 +234,15 @@
     <!-- APP -->
     <div id="appBox" class="hidden">
       <div class="row">
-        <button id="btnRefresh">🔄 Refresh</button>
+        <button id="btnRefresh" class="">🏷️ Queue Refresh</button>
+        <button id="btnLogout" class="secondary">Logout</button>
 
         <label class="pill toggle" title="Nur neue anzeigen">
           <input type="checkbox" id="onlyNew" checked />
           <span id="onlyNewLabel">nur NEU</span>
         </label>
 
-        <label class="pill toggle" title="Auto Refresh">
-          <input type="checkbox" id="autoRefresh" />
-          <span id="autoRefreshLabel">Auto</span>
-        </label>
-
-        <select id="autoInterval" style="width:auto; min-width:180px;">
-          <option value="5000">5s</option>
-          <option value="10000" selected>10s</option>
-          <option value="15000">15s</option>
-          <option value="30000">30s</option>
-          <option value="60000">60s</option>
-        </select>
-
-        <button id="btnLogout" class="secondary">Logout</button>
-      </div>
-
-      <div class="hint" id="subHint">
-        Hier siehst du alle Etiketten-Anfragen vom Handy. Du kannst sie als erledigt markieren oder löschen.
+        <button id="btnClearDone" class="danger">🧹 DONE löschen</button>
       </div>
 
       <div class="divider"></div>
@@ -344,28 +251,25 @@
         <table>
           <thead>
             <tr>
-              <th id="thTime">Zeit</th>
-              <th id="thStatus">Status</th>
-              <th id="thEAN">EAN</th>
-              <th id="thSize">Etikett</th>
-              <th id="thNote">Von</th>
-              <th id="thActions">Aktionen</th>
+              <th id="qTime">Zeit</th>
+              <th id="qStatus">Status</th>
+              <th id="qEAN">EAN</th>
+              <th id="qSize">Etikett</th>
+              <th id="qActions">Aktionen</th>
             </tr>
           </thead>
-          <tbody id="tbody">
-            <!-- rows -->
-          </tbody>
+          <tbody id="queueTbody"></tbody>
         </table>
       </div>
 
-      <div class="hint" id="footHint"></div>
+      <div class="hint" id="queueFootHint"></div>
     </div>
   </div>
 
 <script>
 (() => {
   // ✅ DEINE Google Apps Script WebApp URL
-  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzKFVuk3W6sNGPvSVqOsXxwqfzOGq8H36nx5aA2B_JaHtLQzpoKwcgfr53-BiTFL35B/exec";
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzIL-kJInj0Gd7f5qU-7-sRMy0_gqPrL3blYcWawsv33Sch50ziSnKTWQ7am3LBKCo1/exec";
 
   const $ = (id)=>document.getElementById(id);
   const digitsOnly = (s)=>String(s??"").replace(/\D/g,"");
@@ -375,36 +279,32 @@
     de: {
       title:"Office – Etikett Queue",
       loginH2:"Anmelden",
-      loginP:"Benutzername und PIN eingeben",
+      loginP:"Office-Benutzername und PIN eingeben",
       userLabel:"Benutzername",
       pinLabel:"PIN",
       loginBtn:"Einloggen",
-      loginHint:"Nur Admin/Büro-Accounts dürfen die Liste sehen.",
+      loginHint:"Office/Admin darf diese Seite benutzen.",
       badUser:"Bitte Benutzername eingeben.",
       badPin:"PIN mindestens 4 Ziffern.",
       badCred:"Falscher Benutzername oder PIN.",
-      notAllowed:"Kein Zugriff (nur Büro/Admin).",
+      noAccess:"Kein Zugriff (nur office/admin).",
+      needsActive:"Dein Account ist deaktiviert. In Google Sheet Accounts muss active=1 sein.",
 
-      refresh:"🔄 Refresh",
       onlyNew:"nur NEU",
-      auto:"Auto",
-      logout:"Logout",
-      subHint:"Hier siehst du alle Etiketten-Anfragen vom Handy. Du kannst sie als erledigt markieren oder löschen.",
-
-      thTime:"Zeit",
-      thStatus:"Status",
-      thEAN:"EAN",
-      thSize:"Etikett",
-      thNote:"Von",
-      thActions:"Aktionen",
-
-      btnDone:"✅ Erledigt",
-      btnDelete:"🗑 Löschen",
+      clearDone:"🧹 DONE löschen",
+      qTime:"Zeit",
+      qStatus:"Status",
+      qEAN:"EAN",
+      qSize:"Etikett",
+      qActions:"Aktionen",
+      qDelete:"🗑 Löschen",
+      qDone:"✅ DONE",
       empty:"Keine Einträge.",
       loading:"Lade…",
-      count:(n)=>`Einträge: ${n}`,
+      failed:"Fehler",
 
       sizeName:(v)=>{
+        v=String(v||"");
         if(v==="80x39") return "Regaletikett";
         if(v==="35x70") return "Kühlwaren Etikett";
         if(v==="50x25") return "Kleinetikett";
@@ -420,36 +320,32 @@
     ru: {
       title:"Офис — очередь этикеток",
       loginH2:"Вход",
-      loginP:"Введите имя пользователя и PIN",
+      loginP:"Введите office/admin и PIN",
       userLabel:"Пользователь",
       pinLabel:"PIN",
       loginBtn:"Войти",
-      loginHint:"Только офис/админ может видеть список.",
+      loginHint:"Эту страницу могут использовать office/admin.",
       badUser:"Введите имя пользователя.",
       badPin:"PIN минимум 4 цифры.",
       badCred:"Неверный пользователь или PIN.",
-      notAllowed:"Нет доступа (только офис/админ).",
+      noAccess:"Нет доступа (только office/admin).",
+      needsActive:"Аккаунт отключён. В Google Sheet Accounts нужно active=1.",
 
-      refresh:"🔄 Обновить",
       onlyNew:"только НОВЫЕ",
-      auto:"Авто",
-      logout:"Выйти",
-      subHint:"Здесь видны запросы на печать с телефонов. Можно отметить как выполнено или удалить.",
-
-      thTime:"Время",
-      thStatus:"Статус",
-      thEAN:"EAN",
-      thSize:"Этикетка",
-      thNote:"От",
-      thActions:"Действия",
-
-      btnDone:"✅ Готово",
-      btnDelete:"🗑 Удалить",
+      clearDone:"🧹 удалить DONE",
+      qTime:"Время",
+      qStatus:"Статус",
+      qEAN:"EAN",
+      qSize:"Этикетка",
+      qActions:"Действия",
+      qDelete:"🗑 Удалить",
+      qDone:"✅ DONE",
       empty:"Пусто.",
       loading:"Загрузка…",
-      count:(n)=>`Записей: ${n}`,
+      failed:"Ошибка",
 
       sizeName:(v)=>{
+        v=String(v||"");
         if(v==="80x39") return "Полочная этикетка";
         if(v==="35x70") return "Этикетка для холодильника";
         if(v==="50x25") return "Маленькая этикетка";
@@ -465,42 +361,36 @@
   };
 
   let lang = localStorage.getItem("lang_office") || localStorage.getItem("lang") || "de";
-
   function t(key,arg){
     const d=I18N[lang]||I18N.de;
     const v=d[key];
     return (typeof v==="function") ? v(arg) : v;
   }
-
   function applyLang(){
-    $("title").textContent = t("title");
-    $("loginH2").textContent = t("loginH2");
-    $("loginP").textContent  = t("loginP");
-    $("loginUserLabel").textContent = t("userLabel");
-    $("loginPinLabel").textContent  = t("pinLabel");
-    $("btnLoginText").textContent   = t("loginBtn");
-    $("loginHint").textContent      = t("loginHint");
+    $("title").textContent=t("title");
+    $("loginH2").textContent=t("loginH2");
+    $("loginP").textContent=t("loginP");
+    $("loginUserLabel").textContent=t("userLabel");
+    $("loginPinLabel").textContent=t("pinLabel");
+    $("btnLoginText").textContent=t("loginBtn");
+    $("loginHint").textContent=t("loginHint");
 
-    $("btnRefresh").textContent = t("refresh");
-    $("onlyNewLabel").textContent = t("onlyNew");
-    $("autoRefreshLabel").textContent = t("auto");
-    $("btnLogout").textContent = t("logout");
-    $("subHint").textContent = t("subHint");
+    $("onlyNewLabel").textContent=t("onlyNew");
+    $("btnClearDone").textContent=t("clearDone");
 
-    $("thTime").textContent = t("thTime");
-    $("thStatus").textContent = t("thStatus");
-    $("thEAN").textContent = t("thEAN");
-    $("thSize").textContent = t("thSize");
-    $("thNote").textContent = t("thNote");
-    $("thActions").textContent = t("thActions");
+    $("qTime").textContent=t("qTime");
+    $("qStatus").textContent=t("qStatus");
+    $("qEAN").textContent=t("qEAN");
+    $("qSize").textContent=t("qSize");
+    $("qActions").textContent=t("qActions");
   }
 
-  $("langSelect").value = lang;
+  $("langSelect").value=lang;
   $("langSelect").addEventListener("change",(e)=>{
-    lang = e.target.value;
+    lang=e.target.value;
     localStorage.setItem("lang_office", lang);
     applyLang();
-    renderRows(lastRows);
+    renderQueue(lastQueue);
   });
 
   // ===== sound =====
@@ -528,7 +418,6 @@
   }
   function successSound(){ beep(880,110,"sine",0.08); setTimeout(()=>beep(1320,90,"sine",0.06),120); }
   function errorSound(){ beep(220,160,"square",0.06); setTimeout(()=>beep(180,160,"square",0.05),170); }
-  function notifySound(){ beep(660,90,"triangle",0.07); setTimeout(()=>beep(990,70,"triangle",0.06),100); }
 
   $("soundToggle").checked = (localStorage.getItem("sound_office") ?? localStorage.getItem("sound") ?? "1") === "1";
   $("soundToggle").addEventListener("change", ()=>{
@@ -538,21 +427,14 @@
 
   // ===== float labels =====
   function bindFloatLabel(inputId){
-    const inp = $(inputId);
-    if(!inp) return;
-    const update = ()=>{
-      if(inp.value && inp.value.trim().length>0) inp.classList.add("has-value");
-      else inp.classList.remove("has-value");
-    };
-    inp.addEventListener("input", update);
-    inp.addEventListener("blur", update);
-    setTimeout(update,0);
-    setTimeout(update,150);
+    const inp=$(inputId);
+    const update=()=>{ inp.value?.trim()?inp.classList.add("has-value"):inp.classList.remove("has-value"); };
+    inp.addEventListener("input",update); inp.addEventListener("blur",update);
+    setTimeout(update,0); setTimeout(update,150);
   }
-  bindFloatLabel("loginUser");
-  bindFloatLabel("loginPin");
+  bindFloatLabel("loginUser"); bindFloatLabel("loginPin");
 
-  // ===== auth state =====
+  // ===== state =====
   let token = localStorage.getItem("token_office") || "";
   let username = localStorage.getItem("user_office") || "";
   let userRole = localStorage.getItem("role_office") || "";
@@ -563,32 +445,27 @@
     $("userPill").textContent = on ? `${username} (${userRole})` : "—";
   }
 
-  // ===== API helper =====
+  function hasOfficeAccess(role){
+    role = String(role||"").toLowerCase();
+    return role === "office" || role === "admin";
+  }
+
+  // ===== API =====
   async function apiPost(payload){
     const res = await fetch(WEBAPP_URL, {
       method:"POST",
       headers:{ "Content-Type":"text/plain;charset=utf-8" },
       body: JSON.stringify(payload)
     });
-    return await res.json();
-  }
-
-  async function tryActions(actionNames, payloadBuilder){
-    let lastErr=null;
-    for(const action of actionNames){
-      try{
-        const data = await apiPost(payloadBuilder(action));
-        if(data && (data.ok===true || data.success===true)) return data;
-        lastErr = data?.error || data?.message || JSON.stringify(data);
-      }catch(e){
-        lastErr = String(e);
-      }
+    const text = await res.text();
+    if(!text.trim().startsWith("{") && !text.trim().startsWith("[")){
+      throw new Error("WebApp antwortet nicht als JSON. Anfang: " + text.slice(0,120));
     }
-    throw new Error(lastErr || "unknown_error");
+    return JSON.parse(text);
   }
 
-  function showError(elId, msg){
-    const el = $(elId);
+  function showError(elId,msg){
+    const el=$(elId);
     el.textContent = msg || "";
     el.classList.toggle("show", !!msg);
   }
@@ -596,42 +473,39 @@
     $("btnLogin").classList.toggle("loading", !!on);
   }
 
-  function isOfficeRole(role){
-    role = String(role||"").toLowerCase();
-    return role === "admin" || role === "office" || role === "boss";
-  }
-
-  // ===== login =====
   async function login(){
     await ensureAudio();
-    showError("userError","");
-    showError("pinError","");
+    showError("userError",""); showError("pinError","");
 
-    const u = String($("loginUser").value||"").trim();
-    const p = digitsOnly($("loginPin").value||"");
+    const u=String($("loginUser").value||"").trim();
+    const p=digitsOnly($("loginPin").value||"");
 
     if(!u){ showError("userError", t("badUser")); errorSound(); return; }
     if(p.length<4){ showError("pinError", t("badPin")); errorSound(); return; }
 
     setLoadingLogin(true);
     try{
-      const data = await tryActions(
-        ["auth_login","login","auth","user_login","pin_login"],
-        (action)=>({ action, username:u, user:u, login:u, pin:p, password:p })
-      );
+      const data = await apiPost({ action:"auth_login", username:u, pin:p });
 
-      const tok = data.token || data.session || data.sessionToken || data.authToken || "";
-      const usrObj = data.user || data.account || {};
-      const role = (usrObj.role || data.role || data.userRole || "staff");
-      const uname = (usrObj.username || usrObj.name || data.username || u);
-
-      if(!isOfficeRole(role)){
-        showError("pinError", t("notAllowed"));
+      if(!data || !data.ok){
+        const err = String(data?.error || "bad_credentials");
+        if(err === "inactive") showError("pinError", t("needsActive"));
+        else showError("pinError", t("badCred") + "\n(" + err + ")");
         errorSound();
         return;
       }
 
-      token = tok || "NO_TOKEN";
+      const tok = data.token || "";
+      const role = String((data.user && data.user.role) ? data.user.role : (data.role || "staff"));
+      const uname = String((data.user && data.user.username) ? data.user.username : (data.username || u));
+
+      if(!hasOfficeAccess(role)){
+        showError("pinError", t("noAccess"));
+        errorSound();
+        return;
+      }
+
+      token = tok;
       username = uname;
       userRole = role;
 
@@ -641,9 +515,9 @@
 
       successSound();
       setLoginUI(true);
-      await refresh();
+      await refreshQueue();
     }catch(e){
-      showError("pinError", t("badCred"));
+      showError("pinError", t("failed") + ": " + String(e));
       errorSound();
     }finally{
       setLoadingLogin(false);
@@ -657,86 +531,58 @@
     localStorage.removeItem("token_office");
     localStorage.removeItem("user_office");
     localStorage.removeItem("role_office");
-    stopAuto();
     setLoginUI(false);
   }
   $("btnLogout").addEventListener("click", logout);
 
-  // ===== render =====
-  let lastRows = [];
-  let lastNewCount = 0;
-
-  function fmtTime(ts){
-    if(!ts) return "-";
-    const d = new Date(ts);
-    if(isNaN(d.getTime())) return String(ts);
-    return d.toLocaleString();
-  }
-
-  function statusTag(s){
-    const up = String(s||"").toUpperCase();
-    const cls = up==="NEW" ? "new" : (up==="DONE" ? "done" : "");
-    return `<span class="tag ${cls}">${escapeHtml(t("statusName", up))}</span>`;
-  }
-
-  function sizeTag(v){
-    const name = t("sizeName", v);
-    return `<span class="tag">${escapeHtml(name)}</span>`;
-  }
+  // ===== Queue =====
+  let lastQueue = [];
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g,(m)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
   }
 
-  function renderRows(rows){
-    lastRows = Array.isArray(rows) ? rows : [];
+  function fmtTime(ts){
+    if(!ts) return "-";
+    const d=new Date(ts);
+    if(isNaN(d.getTime())) return String(ts);
+    return d.toLocaleString();
+  }
+
+  function renderQueue(rows){
+    lastQueue = Array.isArray(rows) ? rows : [];
     const onlyNew = $("onlyNew").checked;
+    const filtered = onlyNew ? lastQueue.filter(r=>String(r.status||"").toUpperCase()==="NEW") : lastQueue;
 
-    const filtered = onlyNew
-      ? lastRows.filter(r => String(r.status||"").toUpperCase()==="NEW")
-      : lastRows;
+    const tb=$("queueTbody");
+    tb.innerHTML="";
 
-    $("countPill").textContent = t("count", filtered.length);
-
-    // Notification sound when new items appear
-    const newCount = lastRows.filter(r => String(r.status||"").toUpperCase()==="NEW").length;
-    if(newCount > lastNewCount && $("autoRefresh").checked){
-      notifySound();
-    }
-    lastNewCount = newCount;
-
-    const tb = $("tbody");
-    tb.innerHTML = "";
-
-    if(filtered.length === 0){
-      const tr = document.createElement("tr");
-      const td = document.createElement("td");
-      td.colSpan = 6;
-      td.style.padding = "16px";
-      td.textContent = t("empty");
-      tr.appendChild(td);
-      tb.appendChild(tr);
+    if(filtered.length===0){
+      const tr=document.createElement("tr");
+      const td=document.createElement("td");
+      td.colSpan=5; td.style.padding="16px";
+      td.textContent=t("empty");
+      tr.appendChild(td); tb.appendChild(tr);
       return;
     }
 
     for(const r of filtered){
-      const id = r.id ?? r.rowId ?? r._id ?? "";
-      const ean = r.ean || r.barcode || "";
-      const size = r.size || r.labelSize || "";
-      const note = r.note || r.user || r.by || "";
-      const ts = r.timestamp || r.time || r.created || "";
+      const id = r.id ?? "";
+      const ean = r.ean || "";
+      const size = r.size || "";
+      const ts = r.timestamp || "";
+      const status = String(r.status||"").toUpperCase();
 
-      const tr = document.createElement("tr");
+      const tr=document.createElement("tr");
       tr.innerHTML = `
-        <td data-label="${escapeHtml(t("thTime"))}">${escapeHtml(fmtTime(ts))}</td>
-        <td data-label="${escapeHtml(t("thStatus"))}">${statusTag(r.status)}</td>
-        <td data-label="${escapeHtml(t("thEAN"))}"><span class="mono">${escapeHtml(ean)}</span></td>
-        <td data-label="${escapeHtml(t("thSize"))}">${sizeTag(size)}</td>
-        <td data-label="${escapeHtml(t("thNote"))}">${escapeHtml(note || "-")}</td>
-        <td data-label="${escapeHtml(t("thActions"))}">
+        <td>${escapeHtml(fmtTime(ts))}</td>
+        <td><span class="tag">${escapeHtml(t("statusName", status))}</span></td>
+        <td class="mono">${escapeHtml(ean)}</td>
+        <td><span class="tag">${escapeHtml(t("sizeName", size))}</span></td>
+        <td>
           <div class="actions">
-            <button class="ok" data-act="done" data-id="${escapeHtml(id)}">${escapeHtml(t("btnDone"))}</button>
-            <button class="danger" data-act="del" data-id="${escapeHtml(id)}">${escapeHtml(t("btnDelete"))}</button>
+            <button class="ok" data-act="done" data-id="${escapeHtml(id)}">${escapeHtml(t("qDone"))}</button>
+            <button class="danger" data-act="del" data-id="${escapeHtml(id)}">${escapeHtml(t("qDelete"))}</button>
           </div>
         </td>
       `;
@@ -746,96 +592,70 @@
     tb.querySelectorAll("button[data-act]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
         const act = btn.getAttribute("data-act");
-        const id  = btn.getAttribute("data-id");
+        const id = btn.getAttribute("data-id");
         if(!id) return;
 
-        btn.disabled = true;
+        btn.disabled=true;
         try{
           if(act==="done"){
-            await markDone(id);
-          }else if(act==="del"){
-            await removeRow(id);
+            const data = await apiPost({ action:"queue_set_done", token, id });
+            if(!data.ok) throw new Error(data.error || "queue_set_done_failed");
+          } else if(act==="del"){
+            if(!confirm("Queue-Eintrag löschen?")){ btn.disabled=false; return; }
+            const data = await apiPost({ action:"queue_delete", token, id });
+            if(!data.ok) throw new Error(data.error || "queue_delete_failed");
           }
-          await refresh();
+
+          await refreshQueue();
           successSound();
         }catch(e){
-          alert(String(e||"Fehler"));
+          alert(t("failed") + ": " + String(e||""));
           errorSound();
         }finally{
-          btn.disabled = false;
+          btn.disabled=false;
         }
       });
     });
   }
 
-  // ===== queue actions (robust) =====
-  async function fetchQueue(){
-    const onlyNew = $("onlyNew").checked ? "1" : "0";
-    const data = await tryActions(
-      ["queue_list","list","get","queue_get","sheet_list"],
-      (action)=>({ action, token, onlyNew })
-    );
-    return data.rows || data.data || data.items || [];
-  }
-
-  async function markDone(id){
-    await tryActions(
-      ["queue_done","done","mark_done","queue_update","sheet_update"],
-      (action)=>({ action, token, id, status:"DONE" })
-    );
-  }
-
-  async function removeRow(id){
-    await tryActions(
-      ["queue_delete","delete","remove","queue_remove","sheet_delete"],
-      (action)=>({ action, token, id })
-    );
-  }
-
-  // ===== refresh / auto =====
-  let autoTimer=null;
-
-  async function refresh(){
-    $("footHint").textContent = t("loading");
+  async function refreshQueue(){
+    $("queueFootHint").textContent=t("loading");
     try{
-      const rows = await fetchQueue();
-      renderRows(rows);
-      $("footHint").textContent = "";
+      const onlyNew = $("onlyNew").checked ? "1" : "0";
+      const data = await apiPost({ action:"queue_list", token, onlyNew });
+      if(!data.ok) throw new Error(data.error || "queue_list_failed");
+      renderQueue(data.rows || []);
+      $("queueFootHint").textContent="";
     }catch(e){
-      $("footHint").textContent = "Fehler: " + String(e||"");
+      $("queueFootHint").textContent=t("failed") + ": " + String(e||"");
     }
   }
 
-  function stopAuto(){
-    if(autoTimer){ clearInterval(autoTimer); autoTimer=null; }
-  }
-  function startAuto(){
-    stopAuto();
-    const ms = parseInt($("autoInterval").value, 10) || 10000;
-    autoTimer = setInterval(refresh, ms);
-  }
+  $("btnRefresh").addEventListener("click", refreshQueue);
+  $("onlyNew").addEventListener("change", ()=>renderQueue(lastQueue));
 
-  $("btnRefresh").addEventListener("click", refresh);
-
-  $("onlyNew").addEventListener("change", ()=>{
-    renderRows(lastRows);
-  });
-
-  $("autoRefresh").addEventListener("change", ()=>{
-    if($("autoRefresh").checked) startAuto();
-    else stopAuto();
-  });
-
-  $("autoInterval").addEventListener("change", ()=>{
-    if($("autoRefresh").checked) startAuto();
+  $("btnClearDone").addEventListener("click", async ()=>{
+    if(!confirm("DONE Einträge löschen?")) return;
+    $("btnClearDone").disabled=true;
+    try{
+      const data = await apiPost({ action:"queue_clear_done", token });
+      if(!data.ok) throw new Error(data.error || "queue_clear_done_failed");
+      await refreshQueue();
+      successSound();
+    }catch(e){
+      alert(t("failed") + ": " + String(e||""));
+      errorSound();
+    }finally{
+      $("btnClearDone").disabled=false;
+    }
   });
 
   // ===== init =====
   applyLang();
 
-  if(token && isOfficeRole(userRole)){
+  if(token && hasOfficeAccess(userRole)){
     setLoginUI(true);
-    refresh();
+    refreshQueue();
   }else{
     setLoginUI(false);
   }
