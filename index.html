@@ -10,168 +10,88 @@
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
     body { margin:0; padding:16px; background:#f6f7f8; color:#111; }
 
-    .card{
-      max-width: 980px;
-      margin: 0 auto;
-      background:#fff;
-      border-radius:14px;
-      padding:16px;
-      box-shadow:0 6px 20px rgba(0,0,0,.08);
-      overflow:hidden;
-    }
-    .topbar{
-      display:flex; justify-content:space-between; align-items:center;
-      gap:10px; flex-wrap:wrap;
-    }
+    .card{ max-width: 980px; margin: 0 auto; background:#fff; border-radius:14px; padding:16px;
+      box-shadow:0 6px 20px rgba(0,0,0,.08); overflow:hidden; }
+    .topbar{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
     h1{ margin:0; font-size:18px; }
-
-    .right{
-      display:flex; align-items:center; gap:10px;
-      flex-wrap:wrap; justify-content:flex-end;
-    }
-    .pill{
-      font-size:12px; padding:6px 10px; border-radius:999px;
-      background:#f0f0f0; border:1px solid #e5e5e5;
-      max-width:100%; white-space:nowrap;
-    }
+    .right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .pill{ font-size:12px; padding:6px 10px; border-radius:999px; background:#f0f0f0; border:1px solid #e5e5e5;
+      max-width:100%; white-space:nowrap; }
     .toggle{ display:flex; align-items:center; gap:8px; }
 
-    button{
-      padding:10px 12px;
-      border:0; border-radius:10px;
-      background:#111; color:#fff;
-      cursor:pointer;
-    }
+    button{ padding:10px 12px; border:0; border-radius:10px; background:#111; color:#fff; cursor:pointer; }
     button.secondary{ background:#444; }
     button.ok{ background:#15803d; }
-    button.danger{ background:#b91c1c; }
     button:disabled{ opacity:.5; cursor:not-allowed; }
 
     input[type="text"], input[type="password"], select{
-      width:100%;
-      padding:12px;
-      border:1px solid #ddd;
-      border-radius:10px;
-      background:#fff;
+      width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; background:#fff;
     }
     .divider{ height:1px; background:#eee; margin:14px 0; }
     .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px; }
     .hint{ font-size:12px; color:#666; margin-top:6px; }
     .hidden{ display:none; }
 
-    /* ===== LOGIN ===== */
+    /* LOGIN */
     .loginWrap{ max-width:460px; margin:0 auto; padding:0 8px; }
-    .loginCard{
-      background:#fff;
-      border-radius:12px;
-      padding:26px;
-      border:1px solid #e2e8f0;
-      box-shadow:0 4px 6px -1px rgba(0,0,0,0.10);
-      overflow:hidden;
-    }
+    .loginCard{ background:#fff; border-radius:12px; padding:26px; border:1px solid #e2e8f0;
+      box-shadow:0 4px 6px -1px rgba(0,0,0,0.10); overflow:hidden; }
     .loginHeader{ text-align:center; margin-bottom:18px; }
     .loginHeader h2{ margin:0 0 6px 0; font-size:1.6rem; font-weight:800; color:#1e293b; }
     .loginHeader p{ margin:0; color:#64748b; font-size:.9rem; }
     .form-group{ margin-bottom:16px; }
     .input-wrapper{ position:relative; width:100%; }
     .input-wrapper input{
-      width:100%;
-      background:#fff;
-      border:2px solid #e2e8f0;
-      border-radius:8px;
-      padding:20px 16px 10px 16px;
-      color:#1e293b;
-      font-size:16px;
-      outline:none;
-      transition:all .2s ease;
+      width:100%; background:#fff; border:2px solid #e2e8f0; border-radius:8px;
+      padding:20px 16px 10px 16px; color:#1e293b; font-size:16px; outline:none; transition:all .2s ease;
     }
     .input-wrapper input::placeholder{ color:transparent; }
     .input-wrapper label{
-      position:absolute; left:16px; top:14px;
-      color:#64748b; font-size:14px;
-      transition:all .2s ease;
-      pointer-events:none;
-      transform-origin:left top;
+      position:absolute; left:16px; top:14px; color:#64748b; font-size:14px;
+      transition:all .2s ease; pointer-events:none; transform-origin:left top;
     }
-    .input-wrapper input:focus,
-    .input-wrapper input:valid,
-    .input-wrapper input.has-value{ border-color:#6366f1; }
-    .input-wrapper input:focus + label,
-    .input-wrapper input:valid + label,
-    .input-wrapper input.has-value + label{
-      transform:translateY(-8px) scale(.90);
-      color:#6366f1;
-      font-weight:700;
+    .input-wrapper input:focus, .input-wrapper input:valid, .input-wrapper input.has-value{ border-color:#6366f1; }
+    .input-wrapper input:focus + label, .input-wrapper input:valid + label, .input-wrapper input.has-value + label{
+      transform:translateY(-8px) scale(.90); color:#6366f1; font-weight:700;
     }
     .error-message{
-      display:block; color:#ef4444; font-size:.78rem;
-      font-weight:600; margin-top:6px; margin-left:4px;
-      opacity:0; transform:translateY(-4px);
-      transition:all .2s ease;
-      min-height:1em;
-      white-space:pre-wrap;
+      display:block; color:#ef4444; font-size:.78rem; font-weight:600; margin-top:6px; margin-left:4px;
+      opacity:0; transform:translateY(-4px); transition:all .2s ease; min-height:1em; white-space:pre-wrap;
     }
     .error-message.show{ opacity:1; transform:translateY(0); }
 
     .login-btn{
-      width:100%;
-      background:#6366f1;
-      border:none; border-radius:8px;
-      padding:12px 24px;
-      color:#fff; font-size:16px;
-      font-weight:800; cursor:pointer;
-      transition:all .2s ease;
-      position:relative;
+      width:100%; background:#6366f1; border:none; border-radius:8px; padding:12px 24px;
+      color:#fff; font-size:16px; font-weight:800; cursor:pointer; transition:all .2s ease; position:relative;
     }
     .login-btn:hover{ background:#4f46e5; }
     .login-btn.loading{ pointer-events:none; background:#a5a6f6; }
     .btn-text{ transition:opacity .2s ease; }
     .btn-loader{
-      position:absolute; top:50%; left:50%;
-      transform:translate(-50%,-50%);
-      width:16px; height:16px;
-      border:2px solid transparent;
-      border-top:2px solid white;
-      border-radius:50%;
-      opacity:0;
-      animation:spin 1s linear infinite;
-      transition:opacity .2s ease;
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:16px; height:16px; border:2px solid transparent; border-top:2px solid white; border-radius:50%;
+      opacity:0; animation:spin 1s linear infinite; transition:opacity .2s ease;
     }
     .login-btn.loading .btn-text{ opacity:0; }
     .login-btn.loading .btn-loader{ opacity:1; }
-    @keyframes spin{
-      0%{ transform:translate(-50%,-50%) rotate(0deg); }
-      100%{ transform:translate(-50%,-50%) rotate(360deg); }
-    }
+    @keyframes spin{ 0%{ transform:translate(-50%,-50%) rotate(0deg); } 100%{ transform:translate(-50%,-50%) rotate(360deg); } }
 
-    /* ===== Ergebnis ===== */
-    .resultBox{
-      border:1px solid #eee;
-      border-radius:12px;
-      padding:14px;
-      background:#fafafa;
-    }
+    /* Ergebnis */
+    .resultBox{ border:1px solid #eee; border-radius:12px; padding:14px; background:#fafafa; }
     .bigIcon{ font-size:34px; line-height:1; }
     .resultTitle{ font-weight:900; font-size:18px; margin:8px 0 6px; }
     .kv{ display:grid; grid-template-columns: 120px 1fr; gap:6px 10px; }
     .kv div{ font-size:14px; }
     .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .tag{
-      display:inline-block;
-      font-size:12px;
-      padding:4px 8px;
-      border-radius:999px;
-      border:1px solid #e5e5e5;
-      background:#f3f3f3;
-      white-space:nowrap;
-    }
+    .tag{ display:inline-block; font-size:12px; padding:4px 8px; border-radius:999px;
+      border:1px solid #e5e5e5; background:#f3f3f3; white-space:nowrap; }
 
-    /* Video Scanner */
+    /* Video */
     .scanWrap{ border:1px solid #ddd; border-radius:12px; overflow:hidden; background:#000; }
     video{ width:100%; max-height:380px; display:block; background:#000; }
   </style>
 
-  <!-- ✅ ZXing (läuft überall) -->
+  <!-- ✅ ZXing UMD -->
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 </head>
 
@@ -289,14 +209,13 @@
 
 <script>
 (() => {
-  // ✅ DEINE Google Apps Script WebApp URL
   const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzIL-kJInj0Gd7f5qU-7-sRMy0_gqPrL3blYcWawsv33Sch50ziSnKTWQ7am3LBKCo1/exec";
 
   const $ = (id)=>document.getElementById(id);
-  const digitsOnly = (s)=>String(s??"").replace(/\\D/g,"");
+  const digitsOnly = (s)=>String(s??"").replace(/\D/g,"");
   const norm = (s)=>String(s??"").trim();
 
-  // ===== i18n =====
+  // i18n
   const I18N = {
     de: {
       title:"Produkt-Suche",
@@ -311,7 +230,6 @@
       badCred:"Falscher Benutzername oder PIN.",
       noAccess:"Kein Zugriff (nur staff/admin).",
       needsActive:"Dein Account ist deaktiviert. In Accounts muss active=1 sein.",
-
       csvLabel:"CSV Datenbank laden",
       dbHint:(n)=>`DB: ${n}`,
       searchLabel:"Suche (Name oder EAN)",
@@ -321,9 +239,7 @@
       foundTitle:"✅ Produkt gefunden",
       notFoundTitle:"❌ Produkt nicht gefunden",
       notFoundRu:"Товар не найден",
-      name:"Name",
-      price:"Preis",
-      ean:"EAN",
+      name:"Name", price:"Preis", ean:"EAN",
       sendBtn:"🏷️ Etikett ans Büro senden",
       sendOk:"✅ Gesendet!",
       sendFail:(e)=>"Fehler beim senden: " + e,
@@ -350,7 +266,6 @@
       badCred:"Неверный пользователь или PIN.",
       noAccess:"Нет доступа (только staff/admin).",
       needsActive:"Аккаунт отключён. В Accounts нужно active=1.",
-
       csvLabel:"Загрузить CSV базу",
       dbHint:(n)=>`БД: ${n}`,
       searchLabel:"Поиск (имя или EAN)",
@@ -360,9 +275,7 @@
       foundTitle:"✅ Товар найден",
       notFoundTitle:"❌ Товар не найден",
       notFoundRu:"Товар не найден",
-      name:"Название",
-      price:"Цена",
-      ean:"EAN",
+      name:"Название", price:"Цена", ean:"EAN",
       sendBtn:"🏷️ Отправить этикетку в офис",
       sendOk:"✅ Отправлено!",
       sendFail:(e)=>"Ошибка отправки: " + e,
@@ -384,7 +297,6 @@
     const v=d[key];
     return (typeof v==="function") ? v(arg) : v;
   }
-
   function applyLang(){
     $("title").textContent=t("title");
     $("loginH2").textContent=t("loginH2");
@@ -393,7 +305,6 @@
     $("loginPinLabel").textContent=t("pinLabel");
     $("btnLoginText").textContent=t("loginBtn");
     $("loginHint").textContent=t("loginHint");
-
     $("csvLabel").textContent=t("csvLabel");
     $("sizeLabel").textContent=t("sizeLabel");
     $("searchLabel").textContent=t("searchLabel");
@@ -401,10 +312,8 @@
     $("scanHint").textContent=t("scanHint");
     $("manualEan").placeholder=t("manualPh");
     $("btnSend").textContent=t("sendBtn");
-
     updateDbHint();
   }
-
   $("langSelect").value=lang;
   $("langSelect").addEventListener("change",(e)=>{
     lang=e.target.value;
@@ -415,7 +324,7 @@
     else clearResult();
   });
 
-  // ===== Sound =====
+  // Sound
   let audioCtx=null;
   function soundEnabled(){ return $("soundToggle")?.checked; }
   async function ensureAudio(){
@@ -456,7 +365,7 @@
   }
   bindFloatLabel("loginUser"); bindFloatLabel("loginPin");
 
-  // ===== Auth =====
+  // Auth
   let token = localStorage.getItem("token") || "";
   let username = localStorage.getItem("user") || "";
   let userRole = localStorage.getItem("role") || "";
@@ -507,7 +416,7 @@
       if(!data || !data.ok){
         const err = String(data?.error || "bad_credentials");
         if(err === "inactive") showError("pinError", t("needsActive"));
-        else showError("pinError", t("badCred") + "\\n(" + err + ")");
+        else showError("pinError", t("badCred") + "\n(" + err + ")");
         errorSound();
         return;
       }
@@ -552,7 +461,7 @@
   }
   $("btnLogout").addEventListener("click", logout);
 
-  // ===== CSV DB =====
+  // CSV DB
   let dbRows = [];
   let dbInfo = { name:"—", count:0 };
 
@@ -570,8 +479,8 @@
       }else{
         if(c === '"'){ inQuotes=true; i++; continue; }
         if(c === ','){ row.push(field); field=""; i++; continue; }
-        if(c === '\\n'){ row.push(field); rows.push(row); field=""; row=[]; i++; continue; }
-        if(c === '\\r'){ i++; continue; }
+        if(c === '\n'){ row.push(field); rows.push(row); field=""; row=[]; i++; continue; }
+        if(c === '\r'){ i++; continue; }
         field+=c; i++; continue;
       }
     }
@@ -621,7 +530,7 @@
     successSound();
   });
 
-  // ===== Search/Result =====
+  // Search/Result
   let currentFound=null, currentNotFound=null;
 
   function escapeHtml(s){
@@ -702,7 +611,7 @@
   });
   $("btnManual").addEventListener("click", ()=> doSearch($("manualEan").value));
 
-  // ===== Send Queue =====
+  // Send Queue
   $("btnSend").addEventListener("click", async ()=>{
     await ensureAudio();
     if(!dbRows.length){ $("sendHint").textContent=t("needDb"); errorSound(); return; }
@@ -730,8 +639,8 @@
     }
   });
 
-  // ===== ZXing Kamera Scan =====
-  let zxingReader = null;
+  // ===== ZXing Scan (robust, ohne listVideoInputDevices) =====
+  let reader = null;
   let scanning = false;
 
   async function startCamera(){
@@ -746,30 +655,17 @@
       return;
     }
 
-    if(!zxingReader){
-      zxingReader = new ZXing.BrowserMultiFormatReader();
+    if(!reader){
+      reader = new ZXing.BrowserMultiFormatReader();
     }
 
+    scanning = true;
+    $("scanHint").textContent = t("scanHint");
+
     try{
-      scanning = true;
-
-      // Back camera bevorzugen
-      const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-      let deviceId = devices?.[0]?.deviceId || null;
-
-      // Versuch: ein Gerät mit "back" / "rear"
-      for(const d of devices){
-        const name = (d.label || "").toLowerCase();
-        if(name.includes("back") || name.includes("rear") || name.includes("rück") || name.includes("environment")){
-          deviceId = d.deviceId;
-          break;
-        }
-      }
-
-      $("scanHint").textContent = t("scanHint");
-
-      await zxingReader.decodeFromVideoDevice(
-        deviceId,
+      // ✅ Null = ZXing nimmt Default-Kamera (meist rückseitig)
+      await reader.decodeFromVideoDevice(
+        null,
         $("video"),
         (result, err) => {
           if(!scanning) return;
@@ -796,26 +692,17 @@
     $("btnScan").disabled=false;
     $("btnStop").disabled=true;
     $("scanBox").classList.add("hidden");
-
-    try{
-      if(zxingReader) zxingReader.reset();
-    }catch{}
+    try{ if(reader) reader.reset(); } catch {}
     $("video").srcObject = null;
   }
 
   $("btnScan").addEventListener("click", startCamera);
   $("btnStop").addEventListener("click", stopCamera);
 
-  // ===== init =====
+  // init
   applyLang();
   if(token && hasStaffAccess(userRole)) setLoginUI(true);
   else setLoginUI(false);
-
-  $("langSelect").addEventListener("change", ()=>{ /* already handled above */ });
-
-  $("soundToggle").addEventListener("change", ()=>{
-    if($("soundToggle").checked) ensureAudio();
-  });
 
 })();
 </script>
