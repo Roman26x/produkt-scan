@@ -1,351 +1,159 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin – Benutzer & Queue</title>
-
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    body { margin:0; padding:16px; background:#f6f7f8; color:#111; }
-
-    .card{
-      max-width: 1150px;
-      margin: 0 auto;
-      background:#fff;
-      border-radius:14px;
-      padding:16px;
-      box-shadow:0 6px 20px rgba(0,0,0,.08);
-      overflow:hidden;
-    }
-    .topbar{
-      display:flex; justify-content:space-between; align-items:center;
-      gap:10px; flex-wrap:wrap;
-    }
-    h1{ margin:0; font-size:18px; }
-
-    .right{
-      display:flex; align-items:center; gap:10px;
-      flex-wrap:wrap; justify-content:flex-end;
-    }
-    .pill{
-      font-size:12px; padding:6px 10px; border-radius:999px;
-      background:#f0f0f0; border:1px solid #e5e5e5;
-      max-width:100%; white-space:nowrap;
-    }
-    .toggle{ display:flex; align-items:center; gap:8px; }
-
-    button{
-      padding:10px 12px;
-      border:0; border-radius:10px;
-      background:#111; color:#fff;
-      cursor:pointer;
-    }
-    button.secondary{ background:#444; }
-    button.danger{ background:#b91c1c; }
-    button.ok{ background:#15803d; }
-    button:disabled{ opacity:.5; cursor:not-allowed; }
-
-    input[type="text"], input[type="password"], select{
-      width:100%;
-      padding:12px;
-      border:1px solid #ddd;
-      border-radius:10px;
-      background:#fff;
-    }
-
-    .hint{ font-size:12px; color:#666; margin-top:6px; }
-    .divider{ height:1px; background:#eee; margin:14px 0; }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px; }
-
-    .grid{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:14px;
-    }
-    @media (max-width: 980px){
-      .grid{ grid-template-columns: 1fr; }
-    }
-
-    /* ===== LOGIN ===== */
-    .loginWrap{ max-width:460px; margin:0 auto; padding:0 8px; }
-    .loginCard{
-      background:#fff;
-      border-radius:12px;
-      padding:26px;
-      border:1px solid #e2e8f0;
-      box-shadow:0 4px 6px -1px rgba(0,0,0,0.10);
-      overflow:hidden;
-    }
-    .loginHeader{ text-align:center; margin-bottom:18px; }
-    .loginHeader h2{ margin:0 0 6px 0; font-size:1.6rem; font-weight:800; color:#1e293b; }
-    .loginHeader p{ margin:0; color:#64748b; font-size:.9rem; }
-    .form-group{ margin-bottom:16px; }
-    .input-wrapper{ position:relative; width:100%; }
-    .input-wrapper input{
-      width:100%;
-      background:#fff;
-      border:2px solid #e2e8f0;
-      border-radius:8px;
-      padding:20px 16px 10px 16px;
-      color:#1e293b;
-      font-size:16px;
-      outline:none;
-      transition:all .2s ease;
-    }
-    .input-wrapper input::placeholder{ color:transparent; }
-    .input-wrapper label{
-      position:absolute; left:16px; top:14px;
-      color:#64748b; font-size:14px;
-      transition:all .2s ease;
-      pointer-events:none;
-      transform-origin:left top;
-    }
-    .input-wrapper input:focus,
-    .input-wrapper input:valid,
-    .input-wrapper input.has-value{ border-color:#6366f1; }
-    .input-wrapper input:focus + label,
-    .input-wrapper input:valid + label,
-    .input-wrapper input.has-value + label{
-      transform:translateY(-8px) scale(.90);
-      color:#6366f1;
-      font-weight:700;
-    }
-    .error-message{
-      display:block; color:#ef4444; font-size:.78rem;
-      font-weight:600; margin-top:6px; margin-left:4px;
-      opacity:0; transform:translateY(-4px);
-      transition:all .2s ease;
-      min-height:1em;
-    }
-    .error-message.show{ opacity:1; transform:translateY(0); }
-    .login-btn{
-      width:100%;
-      background:#6366f1;
-      border:none; border-radius:8px;
-      padding:12px 24px;
-      color:#fff; font-size:16px;
-      font-weight:800; cursor:pointer;
-      transition:all .2s ease;
-      position:relative;
-    }
-    .login-btn:hover{ background:#4f46e5; }
-    .login-btn.loading{ pointer-events:none; background:#a5a6f6; }
-    .btn-text{ transition:opacity .2s ease; }
-    .btn-loader{
-      position:absolute; top:50%; left:50%;
-      transform:translate(-50%,-50%);
-      width:16px; height:16px;
-      border:2px solid transparent;
-      border-top:2px solid white;
-      border-radius:50%;
-      opacity:0;
-      animation:spin 1s linear infinite;
-      transition:opacity .2s ease;
-    }
-    .login-btn.loading .btn-text{ opacity:0; }
-    .login-btn.loading .btn-loader{ opacity:1; }
-    @keyframes spin{
-      0%{ transform:translate(-50%,-50%) rotate(0deg); }
-      100%{ transform:translate(-50%,-50%) rotate(360deg); }
-    }
-
-    /* ===== TABLES ===== */
-    table{
-      width:100%;
-      border-collapse:collapse;
-      border:1px solid #eee;
-      border-radius:12px;
-      overflow:hidden;
-      background:#fff;
-    }
-    thead th{
-      text-align:left;
-      font-size:12px;
-      color:#444;
-      background:#f7f7f7;
-      border-bottom:1px solid #eee;
-      padding:10px;
-      white-space:nowrap;
-    }
-    tbody td{
-      padding:10px;
-      border-bottom:1px solid #f0f0f0;
-      vertical-align:top;
-      font-size:14px;
-    }
-    tbody tr:hover{ background:#fafafa; }
-
-    .tag{
-      display:inline-block;
-      font-size:12px;
-      padding:4px 8px;
-      border-radius:999px;
-      border:1px solid #e5e5e5;
-      background:#f3f3f3;
-      white-space:nowrap;
-    }
-    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .actions{ display:flex; gap:8px; flex-wrap:wrap; }
-
-    .panel{
-      border:1px solid #eee;
-      border-radius:12px;
-      padding:12px;
-      background:#fafafa;
-    }
-    .panel h3{ margin:0 0 8px 0; font-size:14px; }
-    .hidden{ display:none; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin – Benutzer & Queue</title>
+<style>
+*{box-sizing:border-box} body{margin:0;padding:16px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f6f7f8;color:#111}
+.card{max-width:1150px;margin:0 auto;background:#fff;border-radius:14px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.pill{font-size:12px;padding:6px 10px;border-radius:999px;background:#f0f0f0;border:1px solid #e5e5e5;white-space:nowrap}
+button{padding:10px 12px;border:0;border-radius:10px;background:#111;color:#fff;cursor:pointer}
+button.secondary{background:#444} button.danger{background:#b91c1c} button.ok{background:#15803d}
+button:disabled{opacity:.5;cursor:not-allowed}
+input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;background:#fff}
+.hint{font-size:12px;color:#666;margin-top:6px}
+.divider{height:1px;background:#eee;margin:14px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}
+@media (max-width:980px){.grid{grid-template-columns:1fr}}
+.hidden{display:none}
+.loginWrap{max-width:460px;margin:0 auto}
+.loginCard{background:#fff;border-radius:12px;padding:26px;border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgba(0,0,0,.10)}
+.loginHeader{text-align:center;margin-bottom:18px}
+.loginHeader h2{margin:0 0 6px;font-size:1.6rem;font-weight:800;color:#1e293b}
+.loginHeader p{margin:0;color:#64748b;font-size:.9rem}
+.form-group{margin-bottom:16px}
+.input-wrapper{position:relative}
+.input-wrapper input{border:2px solid #e2e8f0;border-radius:8px;padding:20px 16px 10px;font-size:16px;outline:none;transition:.2s;width:100%}
+.input-wrapper label{position:absolute;left:16px;top:14px;color:#64748b;font-size:14px;transition:.2s;pointer-events:none}
+.input-wrapper input:focus,.input-wrapper input:valid,.input-wrapper input.has-value{border-color:#6366f1}
+.input-wrapper input:focus+label,.input-wrapper input:valid+label,.input-wrapper input.has-value+label{transform:translateY(-8px) scale(.9);color:#6366f1;font-weight:700}
+.error{color:#ef4444;font-size:.78rem;font-weight:600;margin:6px 0 0 4px;min-height:1em}
+.login-btn{width:100%;background:#6366f1;border:0;border-radius:8px;padding:12px 24px;color:#fff;font-size:16px;font-weight:800}
+table{width:100%;border-collapse:collapse;border:1px solid #eee;border-radius:12px;overflow:hidden}
+thead th{font-size:12px;color:#444;background:#f7f7f7;border-bottom:1px solid #eee;padding:10px;white-space:nowrap;text-align:left}
+tbody td{padding:10px;border-bottom:1px solid #f0f0f0;font-size:14px;vertical-align:top}
+.tag{display:inline-block;font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #e5e5e5;background:#f3f3f3;white-space:nowrap}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+</style>
 </head>
-
 <body>
-  <div class="card">
-    <div class="topbar">
-      <h1 id="title">Admin – Benutzer & Queue</h1>
-      <div class="right">
-        <span class="pill" id="userPill">—</span>
+<div class="card">
+  <div class="topbar">
+    <h1 id="title">Admin – Benutzer & Queue</h1>
+    <div class="right">
+      <span class="pill" id="userPill">—</span>
+      <label class="pill" title="Sound an/aus" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="soundToggle" checked>
+        <span>🔊</span>
+      </label>
+      <select id="langSelect" style="width:auto;min-width:140px">
+        <option value="de">Deutsch</option>
+        <option value="ru">Русский</option>
+      </select>
+    </div>
+  </div>
 
-        <label class="pill toggle" title="Sound an/aus">
-          <input type="checkbox" id="soundToggle" checked />
-          <span>🔊</span>
-        </label>
-
-        <select id="langSelect" style="width:auto; min-width:140px;">
-          <option value="de">Deutsch</option>
-          <option value="ru">Русский</option>
-        </select>
+  <div id="loginBox" class="loginWrap">
+    <div class="loginCard">
+      <div class="loginHeader">
+        <h2 id="loginH2">Anmelden</h2>
+        <p id="loginP">Admin-Benutzername und PIN eingeben</p>
       </div>
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <div class="input-wrapper">
+            <input id="loginUser" type="text" required autocomplete="username">
+            <label for="loginUser" id="loginUserLabel">Benutzername</label>
+          </div>
+          <div class="error" id="userError"></div>
+        </div>
+        <div class="form-group">
+          <div class="input-wrapper">
+            <input id="loginPin" type="password" required inputmode="numeric" autocomplete="current-password">
+            <label for="loginPin" id="loginPinLabel">PIN</label>
+          </div>
+          <div class="error" id="pinError"></div>
+        </div>
+        <button class="login-btn" type="submit" id="btnLogin"><span id="btnLoginText">Einloggen</span></button>
+        <div class="hint" id="loginHint">Nur ADMIN darf diese Seite benutzen.</div>
+      </form>
+    </div>
+    <div class="divider"></div>
+  </div>
+
+  <div id="appBox" class="hidden">
+    <div class="row">
+      <button id="btnRefreshUsers">👥 User Refresh</button>
+      <button id="btnRefreshQueue" class="secondary">🏷️ Queue Refresh</button>
+      <button id="btnLogout" class="secondary">Logout</button>
     </div>
 
-    <!-- LOGIN -->
-    <div id="loginBox" class="loginWrap">
-      <div class="loginCard">
-        <div class="loginHeader">
-          <h2 id="loginH2">Anmelden</h2>
-          <p id="loginP">Admin-Benutzername und PIN eingeben</p>
+    <div class="divider"></div>
+
+    <div class="grid">
+      <div>
+        <div class="hint" style="font-weight:700" id="usersTitle">Benutzer</div>
+        <div class="hint" id="usersHint">Hier kannst du Mitarbeiter anlegen, PIN ändern und löschen.</div>
+
+        <div class="row">
+          <div style="flex:1 1 220px"><input id="newUser" type="text" placeholder="Neuer Benutzername"></div>
+          <div style="flex:1 1 160px"><input id="newPin" type="password" inputmode="numeric" placeholder="PIN"></div>
+          <div style="flex:1 1 200px">
+            <select id="newRole">
+              <option value="staff">staff</option>
+              <option value="office">office</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+          <button id="btnCreateUser" class="ok">➕ Anlegen</button>
         </div>
+        <div class="hint" id="createHint"></div>
 
-        <form id="loginForm" novalidate>
-          <div class="form-group">
-            <div class="input-wrapper">
-              <input type="text" id="loginUser" required autocomplete="username">
-              <label for="loginUser" id="loginUserLabel">Benutzername</label>
-            </div>
-            <span class="error-message" id="userError"></span>
-          </div>
+        <div class="divider"></div>
 
-          <div class="form-group">
-            <div class="input-wrapper">
-              <input type="password" id="loginPin" required inputmode="numeric" autocomplete="current-password">
-              <label for="loginPin" id="loginPinLabel">PIN</label>
-            </div>
-            <span class="error-message" id="pinError"></span>
-          </div>
-
-          <button type="submit" class="login-btn" id="btnLogin">
-            <span class="btn-text" id="btnLoginText">Einloggen</span>
-            <span class="btn-loader"></span>
-          </button>
-          <div class="hint" id="loginHint">Nur ADMIN darf diese Seite benutzen.</div>
-        </form>
-      </div>
-      <div class="divider"></div>
-    </div>
-
-    <!-- APP -->
-    <div id="appBox" class="hidden">
-      <div class="row">
-        <button id="btnRefreshUsers">👥 User Refresh</button>
-        <button id="btnRefreshQueue" class="secondary">🏷️ Queue Refresh</button>
-        <button id="btnLogout" class="secondary">Logout</button>
+        <div style="overflow:auto">
+          <table>
+            <thead><tr>
+              <th id="thUser">User</th><th id="thRole">Role</th><th id="thPin">PIN</th><th id="thUserActions">Aktionen</th>
+            </tr></thead>
+            <tbody id="usersTbody"></tbody>
+          </table>
+        </div>
+        <div class="hint" id="usersFootHint"></div>
       </div>
 
-      <div class="divider"></div>
+      <div>
+        <div class="hint" style="font-weight:700" id="queueTitle">Etikett Queue</div>
+        <div class="hint" id="queueHint">Admin kann die Queue ansehen und Einträge löschen.</div>
 
-      <div class="grid">
-        <!-- LEFT: USERS -->
-        <div>
-          <div class="panel">
-            <h3 id="usersTitle">Benutzer</h3>
-            <div class="hint" id="usersHint">Hier kannst du Mitarbeiter anlegen, PIN ändern und löschen.</div>
-          </div>
-
-          <div class="row" style="margin-top:12px;">
-            <div style="flex:1 1 220px;">
-              <input id="newUser" type="text" placeholder="Neuer Benutzername" />
-            </div>
-            <div style="flex:1 1 160px;">
-              <input id="newPin" type="password" inputmode="numeric" placeholder="PIN" />
-            </div>
-            <div style="flex:1 1 200px;">
-              <select id="newRole">
-                <option value="staff">staff</option>
-                <option value="office">office</option>
-                <option value="admin">admin</option>
-              </select>
-            </div>
-            <button id="btnCreateUser" class="ok">➕ Anlegen</button>
-          </div>
-          <div class="hint" id="createHint"></div>
-
-          <div class="divider"></div>
-
-          <div style="overflow:auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th id="thUser">User</th>
-                  <th id="thRole">Role</th>
-                  <th id="thPin">PIN</th>
-                  <th id="thUserActions">Aktionen</th>
-                </tr>
-              </thead>
-              <tbody id="usersTbody"></tbody>
-            </table>
-          </div>
-          <div class="hint" id="usersFootHint"></div>
+        <div class="row">
+          <label class="pill" style="display:flex;align-items:center;gap:8px" title="Nur neue anzeigen">
+            <input type="checkbox" id="onlyNew" checked>
+            <span id="onlyNewLabel">nur NEU</span>
+          </label>
+          <button id="btnClearDone" class="danger">🧹 DONE löschen</button>
         </div>
 
-        <!-- RIGHT: QUEUE -->
-        <div>
-          <div class="panel">
-            <h3 id="queueTitle">Etikett Queue</h3>
-            <div class="hint" id="queueHint">Admin kann die Queue ansehen und Einträge löschen.</div>
-          </div>
+        <div class="divider"></div>
 
-          <div class="row" style="margin-top:12px;">
-            <label class="pill toggle" title="Nur neue anzeigen">
-              <input type="checkbox" id="onlyNew" checked />
-              <span id="onlyNewLabel">nur NEU</span>
-            </label>
-            <button id="btnClearDone" class="danger">🧹 DONE löschen</button>
-          </div>
-
-          <div class="divider"></div>
-
-          <div style="overflow:auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th id="qTime">Zeit</th>
-                  <th id="qStatus">Status</th>
-                  <th id="qEAN">EAN</th>
-                  <th id="qSize">Etikett</th>
-                  <th id="qBy">Von</th>
-                  <th id="qActions">Aktionen</th>
-                </tr>
-              </thead>
-              <tbody id="queueTbody"></tbody>
-            </table>
-          </div>
-
-          <div class="hint" id="queueFootHint"></div>
+        <div style="overflow:auto">
+          <table>
+            <thead><tr>
+              <th id="qTime">Zeit</th><th id="qStatus">Status</th><th id="qEAN">EAN</th><th id="qSize">Etikett</th><th id="qBy">Von</th><th id="qActions">Aktionen</th>
+            </tr></thead>
+            <tbody id="queueTbody"></tbody>
+          </table>
         </div>
+        <div class="hint" id="queueFootHint"></div>
       </div>
     </div>
   </div>
+</div>
 
 <script>
 (() => {
@@ -353,7 +161,8 @@
   const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzKFVuk3W6sNGPvSVqOsXxwqfzOGq8H36nx5aA2B_JaHtLQzpoKwcgfr53-BiTFL35B/exec";
 
   const $ = (id)=>document.getElementById(id);
-  const digitsOnly = (s)=>String(s??"").replace(/\\D/g,"");
+  const digitsOnly = (s)=>String(s??"").replace(/\D/g,"");
+  const esc = (s)=>String(s??"").replace(/[&<>'"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#039;",'"':"&quot;" }[m]));
 
   // ===== i18n =====
   const I18N = {
@@ -599,25 +408,19 @@
     throw new Error(lastErr || "unknown_error");
   }
 
-  function showError(elId,msg){
-    const el=$(elId);
-    el.textContent = msg || "";
-    el.classList.toggle("show", !!msg);
-  }
-
   function setLoadingLogin(on){
-    $("btnLogin").classList.toggle("loading", !!on);
+    $("btnLogin").disabled = !!on;
   }
 
   async function login(){
     await ensureAudio();
-    showError("userError",""); showError("pinError","");
+    $("userError").textContent=""; $("pinError").textContent="";
 
     const u=String($("loginUser").value||"").trim();
     const p=digitsOnly($("loginPin").value||"");
 
-    if(!u){ showError("userError", t("badUser")); errorSound(); return; }
-    if(p.length<4){ showError("pinError", t("badPin")); errorSound(); return; }
+    if(!u){ $("userError").textContent = t("badUser"); errorSound(); return; }
+    if(p.length<4){ $("pinError").textContent = t("badPin"); errorSound(); return; }
 
     setLoadingLogin(true);
     try{
@@ -632,7 +435,7 @@
       const uname = (usrObj.username || usrObj.name || data.username || u);
 
       if(!isAdmin(role)){
-        showError("pinError", t("notAdmin"));
+        $("pinError").textContent = t("notAdmin");
         errorSound();
         return;
       }
@@ -650,7 +453,7 @@
       await refreshUsers();
       await refreshQueue();
     }catch(e){
-      showError("pinError", t("badCred"));
+      $("pinError").textContent = t("badCred");
       errorSound();
     }finally{
       setLoadingLogin(false);
@@ -671,21 +474,13 @@
   // ===== Users =====
   let lastUsers = [];
 
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g,(m)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
-  }
-
   function renderUsers(users){
     lastUsers = Array.isArray(users) ? users : [];
     const tb = $("usersTbody");
     tb.innerHTML = "";
 
     if(lastUsers.length===0){
-      const tr=document.createElement("tr");
-      const td=document.createElement("td");
-      td.colSpan=4; td.style.padding="16px";
-      td.textContent = t("empty");
-      tr.appendChild(td); tb.appendChild(tr);
+      tb.innerHTML = `<tr><td colspan="4" style="padding:16px">${esc(t("empty"))}</td></tr>`;
       return;
     }
 
@@ -697,13 +492,13 @@
 
       const tr=document.createElement("tr");
       tr.innerHTML = `
-        <td><strong>${escapeHtml(uname)}</strong></td>
-        <td><span class="tag">${escapeHtml(role)}</span></td>
-        <td class="mono">${escapeHtml(pin ? String(pin) : "-")}</td>
+        <td><strong>${esc(uname)}</strong></td>
+        <td><span class="tag">${esc(role)}</span></td>
+        <td class="mono">${esc(pin ? String(pin) : "-")}</td>
         <td>
           <div class="actions">
-            <button class="secondary" data-act="setpin" data-id="${escapeHtml(id)}" data-user="${escapeHtml(uname)}">${escapeHtml(t("btnSetPin"))}</button>
-            <button class="danger" data-act="del" data-id="${escapeHtml(id)}" data-user="${escapeHtml(uname)}">${escapeHtml(t("btnDelete"))}</button>
+            <button class="secondary" data-act="setpin" data-id="${esc(id)}" data-user="${esc(uname)}">${esc(t("btnSetPin"))}</button>
+            <button class="danger" data-act="del" data-id="${esc(id)}" data-user="${esc(uname)}">${esc(t("btnDelete"))}</button>
           </div>
         </td>
       `;
@@ -724,11 +519,17 @@
             if(!newPin){ btn.disabled=false; return; }
             const p = digitsOnly(newPin);
             if(p.length<4){ alert(t("badPin")); throw new Error("bad_pin"); }
-            await updateUserPin(id, uname, p);
+            await tryActions(
+              ["users_update_pin","user_update_pin","set_pin","update_pin","accounts_update"],
+              (action)=>({ action, token, id, username:uname, user:uname, pin:p, password:p })
+            );
             alert(t("pinChanged"));
           }else if(act==="del"){
             if(!confirm("Löschen: " + uname + " ?")){ btn.disabled=false; return; }
-            await deleteUser(id, uname);
+            await tryActions(
+              ["users_delete","user_delete","delete_user","remove_user","accounts_delete"],
+              (action)=>({ action, token, id, username:uname, user:uname })
+            );
             alert(t("deletedOk"));
           }
           await refreshUsers();
@@ -758,27 +559,6 @@
     }
   }
 
-  async function createUser(username, pin, role){
-    return await tryActions(
-      ["users_create","user_create","create_user","add_user","accounts_create"],
-      (action)=>({ action, token, username, user:username, pin, password:pin, role })
-    );
-  }
-
-  async function updateUserPin(id, username, pin){
-    return await tryActions(
-      ["users_update_pin","user_update_pin","set_pin","update_pin","accounts_update"],
-      (action)=>({ action, token, id, username, user:username, pin, password:pin })
-    );
-  }
-
-  async function deleteUser(id, username){
-    return await tryActions(
-      ["users_delete","user_delete","delete_user","remove_user","accounts_delete"],
-      (action)=>({ action, token, id, username, user:username })
-    );
-  }
-
   $("btnRefreshUsers").addEventListener("click", refreshUsers);
 
   $("btnCreateUser").addEventListener("click", async ()=>{
@@ -792,7 +572,10 @@
     $("btnCreateUser").disabled=true;
     $("createHint").textContent = t("loading");
     try{
-      await createUser(u,p,r);
+      await tryActions(
+        ["users_create","user_create","create_user","add_user","accounts_create"],
+        (action)=>({ action, token, username:u, user:u, pin:p, password:p, role:r })
+      );
       $("createHint").textContent = t("createdOk");
       $("newUser").value=""; $("newPin").value="";
       await refreshUsers();
@@ -824,11 +607,7 @@
     tb.innerHTML="";
 
     if(filtered.length===0){
-      const tr=document.createElement("tr");
-      const td=document.createElement("td");
-      td.colSpan=6; td.style.padding="16px";
-      td.textContent=t("empty");
-      tr.appendChild(td); tb.appendChild(tr);
+      tb.innerHTML = `<tr><td colspan="6" style="padding:16px">${esc(t("empty"))}</td></tr>`;
       return;
     }
 
@@ -842,14 +621,14 @@
 
       const tr=document.createElement("tr");
       tr.innerHTML = `
-        <td>${escapeHtml(fmtTime(ts))}</td>
-        <td><span class="tag">${escapeHtml(t("statusName", status))}</span></td>
-        <td class="mono">${escapeHtml(ean)}</td>
-        <td><span class="tag">${escapeHtml(t("sizeName", size))}</span></td>
-        <td>${escapeHtml(by || "-")}</td>
+        <td>${esc(fmtTime(ts))}</td>
+        <td><span class="tag">${esc(t("statusName", status))}</span></td>
+        <td class="mono">${esc(ean)}</td>
+        <td><span class="tag">${esc(t("sizeName", size))}</span></td>
+        <td>${esc(by || "-")}</td>
         <td>
           <div class="actions">
-            <button class="danger" data-act="qdel" data-id="${escapeHtml(id)}">${escapeHtml(t("qDelete"))}</button>
+            <button class="danger" data-act="qdel" data-id="${esc(id)}">${esc(t("qDelete"))}</button>
           </div>
         </td>
       `;
@@ -864,7 +643,10 @@
 
         btn.disabled=true;
         try{
-          await deleteQueueRow(id);
+          await tryActions(
+            ["queue_delete","delete","remove","queue_remove","sheet_delete"],
+            (action)=>({ action, token, id })
+          );
           await refreshQueue();
           successSound();
         }catch(e){
@@ -893,27 +675,22 @@
     }
   }
 
-  async function deleteQueueRow(id){
-    return await tryActions(
-      ["queue_delete","delete","remove","queue_remove","sheet_delete"],
-      (action)=>({ action, token, id })
-    );
-  }
-
   async function clearDone(){
-    // Versucht eine Server-Action "queue_clear_done" – wenn es die nicht gibt,
-    // löscht die Seite DONE-Einträge einzeln.
     try{
       await tryActions(
         ["queue_clear_done","clear_done","queue_delete_done"],
         (action)=>({ action, token })
       );
     }catch{
-      // fallback: delete DONE rows one by one
       const doneRows = lastQueue.filter(r=>String(r.status||"").toUpperCase()==="DONE");
       for(const r of doneRows){
         const id = r.id ?? r.rowId ?? r._id ?? "";
-        if(id) await deleteQueueRow(id);
+        if(id){
+          await tryActions(
+            ["queue_delete","delete","remove","queue_remove","sheet_delete"],
+            (action)=>({ action, token, id })
+          );
+        }
       }
     }
   }
