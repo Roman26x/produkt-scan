@@ -29,7 +29,7 @@
     }
     .divider{ height:1px; background:#eee; margin:14px 0; }
     .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px; }
-    .hint{ font-size:12px; color:#666; margin-top:6px; }
+    .hint{ font-size:12px; color:#666; margin-top:6px; white-space:pre-wrap; }
     .hidden{ display:none; }
 
     /* LOGIN */
@@ -91,7 +91,7 @@
     video{ width:100%; max-height:380px; display:block; background:#000; }
   </style>
 
-  <!-- ✅ ZXing UMD -->
+  <!-- ZXing -->
   <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 </head>
 
@@ -157,6 +157,7 @@
           <label class="hint" id="csvLabel">CSV Datenbank laden</label>
           <input type="file" id="csvFile" accept=".csv,text/csv" />
           <div class="hint" id="dbHint">DB: —</div>
+          <div class="hint" id="dbDebug"></div>
         </div>
 
         <div style="flex:1 1 220px;">
@@ -172,6 +173,7 @@
           <label class="hint" id="searchLabel">Suche (Name oder EAN)</label>
           <input type="text" id="searchInput" placeholder="z.B. Milch oder 401234..." />
           <div class="hint" id="searchHint"></div>
+          <div class="hint" id="lastScanHint"></div>
         </div>
 
         <div class="row" style="flex:1 1 100%; margin-top:2px;">
@@ -209,6 +211,7 @@
 
 <script>
 (() => {
+  // ✅ DEINE Google Apps Script WebApp URL
   const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzIL-kJInj0Gd7f5qU-7-sRMy0_gqPrL3blYcWawsv33Sch50ziSnKTWQ7am3LBKCo1/exec";
 
   const $ = (id)=>document.getElementById(id);
@@ -461,11 +464,33 @@
   }
   $("btnLogout").addEventListener("click", logout);
 
-  // CSV DB
+  // ===== CSV IMPORT (AUTO-DELIMITER + SMART HEADER) =====
   let dbRows = [];
-  let dbInfo = { name:"—", count:0 };
+  let dbInfo = { name:"—", count:0, delimiter:"?", cols:[], map:{} };
 
-  function parseCSV(text){
+  function stripBom(s){
+    return s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s;
+  }
+
+  function detectDelimiter(sampleText){
+    // count occurrences in first ~10 lines
+    const lines = sampleText.split(/\r?\n/).slice(0, 10).join("\n");
+    const counts = {
+      ";": (lines.match(/;/g) || []).length,
+      ",": (lines.match(/,/g) || []).length,
+      "\t": (lines.match(/\t/g) || []).length
+    };
+    // choose max
+    let best=";";
+    let bestVal=-1;
+    for(const k of Object.keys(counts)){
+      if(counts[k] > bestVal){ bestVal = counts[k]; best = k; }
+    }
+    return bestVal <= 0 ? "," : best;
+  }
+
+  function parseCSV(text, delimiter){
+    // supports quotes, delimiter ; or ,
     const rows=[];
     let i=0, field="", row=[], inQuotes=false;
     while(i<text.length){
@@ -478,64 +503,116 @@
         field+=c; i++; continue;
       }else{
         if(c === '"'){ inQuotes=true; i++; continue; }
-        if(c === ','){ row.push(field); field=""; i++; continue; }
-        if(c === '\n'){ row.push(field); rows.push(row); field=""; row=[]; i++; continue; }
-        if(c === '\r'){ i++; continue; }
+        if(c === delimiter){ row.push(field); field=""; i++; continue; }
+        if(c === "\n"){ row.push(field); rows.push(row); field=""; row=[]; i++; continue; }
+        if(c === "\r"){ i++; continue; }
         field+=c; i++; continue;
       }
     }
     row.push(field); rows.push(row);
     return rows;
   }
-  function guessColumns(header){
-    const h = header.map(x=>String(x||"").trim().toLowerCase());
-    const find = (...names)=> {
-      for(const n of names){
-        const idx = h.indexOf(n);
-        if(idx>=0) return idx;
-      }
-      return -1;
-    };
-    return {
-      idxName: find("name","produkt","produktname","artikel","artikelname","bezeichnung"),
-      idxEan:  find("ean","barcode","gtin","eancode","ean13"),
-      idxPrice:find("price","preis","vk","verkaufspreis","bruttopreis"),
-    };
+
+  function normalizeHeader(h){
+    return String(h||"")
+      .trim()
+      .toLowerCase()
+      .replace(/\u00a0/g," ")
+      .replace(/\s+/g," ")
+      .replace(/[^a-z0-9äöüß \-_]/g,"");
   }
+
+  function pickColumn(headers, patterns){
+    // patterns: array of substrings; chooses first header that contains one of patterns
+    for(let i=0;i<headers.length;i++){
+      const h = headers[i];
+      for(const p of patterns){
+        if(h.includes(p)) return i;
+      }
+    }
+    return -1;
+  }
+
+  function buildHeaderMap(headerRow){
+    const headers = headerRow.map(normalizeHeader);
+
+    const idxEan = pickColumn(headers, [
+      "ean","gtin","barcode","strich","bar code","ean code","eancode","artikelnummer","artikel nr"
+    ]);
+
+    const idxName = pickColumn(headers, [
+      "produkt","artikel","bezeichnung","name","titel","description","beschreibung"
+    ]);
+
+    const idxPrice = pickColumn(headers, [
+      "preis","price","vk","verkauf","brutto","endpreis","sale"
+    ]);
+
+    return { headers, idxEan, idxName, idxPrice };
+  }
+
   function updateDbHint(){
     $("dbHint").textContent = t("dbHint", `${dbInfo.name} (${dbInfo.count})`);
+    const map = dbInfo.map || {};
+    const dbg =
+      `Delimiter: ${dbInfo.delimiter === "\t" ? "TAB" : dbInfo.delimiter}\n`+
+      `Spalten erkannt → EAN: ${map.idxEan}, Name: ${map.idxName}, Preis: ${map.idxPrice}\n`+
+      `Header[0..8]: ${dbInfo.cols.slice(0,9).join(" | ")}`;
+    $("dbDebug").textContent = dbInfo.count ? dbg : "";
   }
+
   $("csvFile").addEventListener("change", async (e)=>{
     const file = e.target.files && e.target.files[0];
     if(!file) return;
-    const text = await file.text();
-    const table = parseCSV(text);
-    if(!table.length){ dbRows=[]; dbInfo={name:file.name,count:0}; updateDbHint(); return; }
 
-    const header = table[0];
-    const cols = guessColumns(header);
-    const data = table.slice(1).filter(r=>r.some(v=>String(v||"").trim()!==""));
+    let text = await file.text();
+    text = stripBom(text);
+
+    const delimiter = detectDelimiter(text);
+    const table = parseCSV(text, delimiter).filter(r=>r.some(v=>String(v||"").trim()!==""));
+
+    if(!table.length){
+      dbRows=[];
+      dbInfo={ name:file.name, count:0, delimiter, cols:[], map:{} };
+      updateDbHint();
+      return;
+    }
+
+    const headerRow = table[0];
+    const map = buildHeaderMap(headerRow);
+
+    const data = table.slice(1);
 
     dbRows = data.map(r=>{
-      const name = cols.idxName>=0 ? String(r[cols.idxName]||"") : "";
-      const ean = cols.idxEan>=0 ? digitsOnly(r[cols.idxEan]) : "";
-      const price = cols.idxPrice>=0 ? String(r[cols.idxPrice]||"") : "";
+      const name = map.idxName>=0 ? String(r[map.idxName]||"").trim() : "";
+      const eanRaw = map.idxEan>=0 ? String(r[map.idxEan]||"") : "";
+      const ean = digitsOnly(eanRaw); // keep leading zeros because it's digits-only
+      const price = map.idxPrice>=0 ? String(r[map.idxPrice]||"").trim() : "";
       return { name, ean, price };
-    });
+    }).filter(x=>x.ean || x.name);
 
-    dbInfo = { name:file.name, count:dbRows.length };
+    dbInfo = {
+      name:file.name,
+      count:dbRows.length,
+      delimiter,
+      cols: headerRow.map(h=>String(h||"").trim()),
+      map
+    };
+
     updateDbHint();
     clearResult();
     $("searchHint").textContent = "";
+    $("lastScanHint").textContent = "";
     successSound();
   });
 
-  // Search/Result
+  // ===== Search / Matching =====
   let currentFound=null, currentNotFound=null;
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g,(m)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
   }
+
   function clearResult(){
     currentFound=null; currentNotFound=null;
     $("resultIcon").textContent="—";
@@ -544,6 +621,7 @@
     $("btnSend").disabled=true;
     $("sendHint").textContent="";
   }
+
   function renderFound(item){
     currentFound=item; currentNotFound=null;
     $("resultIcon").textContent="✅";
@@ -557,6 +635,7 @@
     $("btnSend").disabled=false;
     $("sendHint").textContent="";
   }
+
   function renderNotFound(ean){
     currentFound=null; currentNotFound=ean;
     $("resultIcon").textContent="❌";
@@ -568,6 +647,35 @@
     $("btnSend").disabled=true;
     $("sendHint").textContent="";
   }
+
+  function eanCandidates(raw){
+    // return variants that often differ between scan/db
+    const d = digitsOnly(raw);
+    const set = new Set();
+    if(d) set.add(d);
+
+    // if UPC-A 12 digits, maybe DB uses EAN-13 with leading 0
+    if(d.length === 12) set.add("0" + d);
+
+    // if EAN-13 starts with 0, maybe DB stores without leading 0
+    if(d.length === 13 && d.startsWith("0")) set.add(d.slice(1));
+
+    // sometimes scanners include extra digits; try last 13/12
+    if(d.length > 13) set.add(d.slice(-13));
+    if(d.length > 12) set.add(d.slice(-12));
+
+    return [...set];
+  }
+
+  function findByEan(raw){
+    const cands = eanCandidates(raw);
+    for(const c of cands){
+      const hit = dbRows.find(r=>r.ean && r.ean === c);
+      if(hit) return hit;
+    }
+    return null;
+  }
+
   function findInDb(query){
     if(!dbRows.length) return { type:"no_db" };
     const q = norm(query);
@@ -577,7 +685,7 @@
     const isEanQuery = qDigits.length >= 6;
 
     if(isEanQuery){
-      const hit = dbRows.find(r=>r.ean && r.ean === qDigits);
+      const hit = findByEan(qDigits);
       return hit ? { type:"found", item:hit } : { type:"not_found", ean:qDigits };
     }
 
@@ -585,6 +693,7 @@
     const hit = dbRows.find(r=>(r.name||"").toLowerCase().includes(qLower));
     if(hit) return { type:"found", item:hit };
 
+    // fallback digits search
     if(qDigits){
       const hit2 = dbRows.find(r=>r.ean && r.ean.includes(qDigits));
       if(hit2) return { type:"found", item:hit2 };
@@ -592,7 +701,13 @@
 
     return { type:"not_found", ean:qDigits || q };
   }
-  function doSearch(query){
+
+  function doSearch(query, sourceLabel=""){
+    const qDigits = digitsOnly(query);
+    if(sourceLabel){
+      $("lastScanHint").textContent = sourceLabel + (qDigits ? ` → gesucht: ${qDigits}` : "");
+    }
+
     const res = findInDb(query);
     if(res.type==="no_db"){
       $("searchHint").textContent = t("needDb");
@@ -604,14 +719,15 @@
     else if(res.type==="not_found"){ renderNotFound(res.ean); errorSound(); }
     else { clearResult(); }
   }
+
   $("searchInput").addEventListener("input", (e)=>{
     const v = e.target.value;
-    if(v.trim().length===0){ clearResult(); return; }
-    doSearch(v);
+    if(v.trim().length===0){ clearResult(); $("lastScanHint").textContent=""; return; }
+    doSearch(v, "");
   });
-  $("btnManual").addEventListener("click", ()=> doSearch($("manualEan").value));
+  $("btnManual").addEventListener("click", ()=> doSearch($("manualEan").value, "Manuell"));
 
-  // Send Queue
+  // ===== Send Queue =====
   $("btnSend").addEventListener("click", async ()=>{
     await ensureAudio();
     if(!dbRows.length){ $("sendHint").textContent=t("needDb"); errorSound(); return; }
@@ -639,9 +755,10 @@
     }
   });
 
-  // ===== ZXing Scan (robust, ohne listVideoInputDevices) =====
+  // ===== ZXing Scan (iPhone Safari stabil) =====
   let reader = null;
   let scanning = false;
+  let mediaStream = null;
 
   async function startCamera(){
     $("scanBox").classList.remove("hidden");
@@ -655,52 +772,71 @@
       return;
     }
 
-    if(!reader){
-      reader = new ZXing.BrowserMultiFormatReader();
-    }
-
-    scanning = true;
-    $("scanHint").textContent = t("scanHint");
+    if(!reader) reader = new ZXing.BrowserMultiFormatReader();
 
     try{
-      // ✅ Null = ZXing nimmt Default-Kamera (meist rückseitig)
-      await reader.decodeFromVideoDevice(
-        null,
-        $("video"),
-        (result, err) => {
-          if(!scanning) return;
-          if(result){
-            const raw = result.getText ? result.getText() : String(result);
-            const ean = digitsOnly(raw);
-            if(ean.length >= 8){
-              $("manualEan").value = ean;
-              doSearch(ean);
-            }
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      });
+
+      const video = $("video");
+      video.setAttribute("playsinline","");
+      video.muted = true;
+      video.autoplay = true;
+      video.srcObject = mediaStream;
+      await video.play();
+
+      scanning = true;
+      $("scanHint").textContent = t("scanHint");
+
+      reader.decodeFromVideoElementContinuously(video, (result, err) => {
+        if(!scanning) return;
+        if(result){
+          const raw = result.getText ? result.getText() : String(result);
+          const ean = digitsOnly(raw);
+          if(ean.length >= 8){
+            $("manualEan").value = ean;
+            doSearch(ean, "Scan");
           }
         }
-      );
+      });
+
     }catch(e){
       $("scanHint").textContent = "Kamera-Fehler: " + String(e);
       $("btnScan").disabled=false;
       $("btnStop").disabled=true;
       scanning=false;
+      stopCamera(true);
     }
   }
 
-  function stopCamera(){
+  function stopCamera(silent=false){
     scanning=false;
     $("btnScan").disabled=false;
     $("btnStop").disabled=true;
     $("scanBox").classList.add("hidden");
+
     try{ if(reader) reader.reset(); } catch {}
-    $("video").srcObject = null;
+
+    const video = $("video");
+    try{ video.pause(); } catch {}
+    video.srcObject = null;
+
+    if(mediaStream){
+      mediaStream.getTracks().forEach(t=>t.stop());
+      mediaStream = null;
+    }
+
+    if(!silent){ /* nothing */ }
   }
 
   $("btnScan").addEventListener("click", startCamera);
-  $("btnStop").addEventListener("click", stopCamera);
+  $("btnStop").addEventListener("click", ()=>stopCamera(false));
 
-  // init
+  // ===== init =====
   applyLang();
+
   if(token && hasStaffAccess(userRole)) setLoginUI(true);
   else setLoginUI(false);
 
