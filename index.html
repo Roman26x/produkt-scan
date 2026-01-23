@@ -451,6 +451,26 @@
     if(!silent) $("scanHint").textContent = "";
   }
 
+    async function hardStopStreamsOnly(){
+    // stop decoding
+    try{ if(zxingReader && zxingReader.reset) zxingReader.reset(); }catch{}
+    zxingReader = null;
+
+    // stop camera tracks
+    try{
+      if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+      }
+    }catch{}
+    stream = null;
+
+    // detach video
+    const v = $("video");
+    try{ v.pause(); }catch{}
+    v.srcObject = null;
+  }
+
+
   async function startCamera(){
     await ensureAudio();
     if(!dbRows.length){
@@ -487,16 +507,54 @@
 
     // getUserMedia (environment camera)
     try{
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false
-      });
-      video.srcObject = stream;
-      await video.play();
+            // ✅ Vor jedem Start: alte Streams wirklich schließen
+      await hardStopStreamsOnly();
+
+      // iPhone/Safari: erst "simple constraints" versuchen
+      const constraintsSimple = { video: { facingMode: { ideal: "environment" } }, audio: false };
+
+      const constraintsIdeal  = { video: { facingMode: { ideal: "environment" } }, audio: false };
+
+      async function openCamOnce(constraints){
+        const s = await navigator.mediaDevices.getUserMedia(constraints);
+        const video = $("video");
+        video.setAttribute("playsinline", "");
+        video.muted = true;
+        video.autoplay = true;
+        video.srcObject = s;
+
+        // warten bis video ready (Safari)
+        await new Promise((resolve, reject)=>{
+          const t = setTimeout(()=>reject(new Error("video_timeout")), 5000);
+          video.onloadedmetadata = ()=>{ clearTimeout(t); resolve(); };
+        });
+
+        await video.play();
+        return s;
+      }
+
+      try{
+        stream = await openCamOnce(constraintsSimple);
+      }catch(e1){
+        // AbortError → einmal kurz warten und nochmal probieren
+        if(String(e1?.name || e1).includes("AbortError")){
+          await new Promise(r=>setTimeout(r, 300));
+          try{
+            stream = await openCamOnce(constraintsSimple);
+          }catch(e2){
+            // fallback auf ideal
+            stream = await openCamOnce(constraintsIdeal);
+          }
+        }else{
+          // fallback auf ideal
+          stream = await openCamOnce(constraintsIdeal);
+        }
+      }
+
     }catch(e){
       $("scanHint").textContent = t("scanHintNoCam") + " (" + String(e) + ")";
       badSound();
-      await stopCamera(true);
+      await hardStopStreamsOnly();
       return;
     }
 
