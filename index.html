@@ -649,23 +649,42 @@
   }
 
   function eanCandidates(raw){
-    // return variants that often differ between scan/db
-    const d = digitsOnly(raw);
-    const set = new Set();
-    if(d) set.add(d);
+  const d = digitsOnly(raw);
+  const set = new Set();
 
-    // if UPC-A 12 digits, maybe DB uses EAN-13 with leading 0
-    if(d.length === 12) set.add("0" + d);
+  if(d) set.add(d);
 
-    // if EAN-13 starts with 0, maybe DB stores without leading 0
-    if(d.length === 13 && d.startsWith("0")) set.add(d.slice(1));
-
-    // sometimes scanners include extra digits; try last 13/12
-    if(d.length > 13) set.add(d.slice(-13));
-    if(d.length > 12) set.add(d.slice(-12));
-
-    return [...set];
+  // --- GS1-128 / Code128 Fälle ---
+  // AI "01" + GTIN14: z.B. 01 04602441017751  -> DB hat oft EAN13: 4602441017751
+  if(d.startsWith("01") && d.length >= 16){
+    const gtin14 = d.slice(2, 16);         // die nächsten 14 Stellen nach "01"
+    set.add(gtin14);
+    if(gtin14.startsWith("0")) set.add(gtin14.slice(1)); // EAN13
   }
+
+  // GTIN14 direkt (14 Stellen) -> evtl. führende 0 weg
+  if(d.length === 14 && d.startsWith("0")){
+    set.add(d.slice(1)); // EAN13
+  }
+
+  // UPC-A 12 Stellen -> evtl. EAN13 mit führender 0
+  if(d.length === 12){
+    set.add("0" + d);
+  }
+
+  // EAN13 mit führender 0 -> evtl. DB ohne führende 0
+  if(d.length === 13 && d.startsWith("0")){
+    set.add(d.slice(1));
+  }
+
+  // Wenn Scanner mehr Daten liefert: "letzte 14/13/12"
+  if(d.length > 14) set.add(d.slice(-14));
+  if(d.length > 13) set.add(d.slice(-13));
+  if(d.length > 12) set.add(d.slice(-12));
+
+  return [...set];
+}
+
 
   function findByEan(raw){
     const cands = eanCandidates(raw);
@@ -844,3 +863,4 @@
 </script>
 </body>
 </html>
+
